@@ -1,0 +1,136 @@
+# ===================================================================
+#  StimmenClonewandler – .gitignore
+#  Auf GitHub gehören ausschließlich Quellcode, Konfigurationsvorlagen
+#  und Dokumentation. NIEMALS Audio, Modelle, Stimmen oder Geheimnisse.
+# ===================================================================
+
+# -------------------------------------------------------------------
+# 0. Import-Ordner von Cloud-Downloads (z. B. Google Drive)
+# -------------------------------------------------------------------
+google_drive/
+drive_import/
+Downloads/
+
+# -------------------------------------------------------------------
+# 1. Audioaufnahmen, Sprachproben und Ergebnisse (absolut tabu)
+# -------------------------------------------------------------------
+*.wav
+*.WAV
+*.flac
+*.mp3
+*.m4a
+*.ogg
+*.opus
+*.aac
+*.aiff
+*.aif
+*.wma
+*.raw
+*.pcm
+*.mp4
+*.webm
+
+# -------------------------------------------------------------------
+# 2. Sprachmodelle, Checkpoints, Trainingsartefakte
+# -------------------------------------------------------------------
+*.onnx
+*.onnx.json
+*.onnx.data
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.h5
+*.tflite
+*.gguf
+*.ggml
+models/
+modelle/
+checkpoints/
+voices/
+speaker_embeddings/
+*.embedding
+
+# -------------------------------------------------------------------
+# 3. Lokale Daten der App
+# -------------------------------------------------------------------
+# Alles in data/ bleibt lokal (Aufnahmen, Metadaten, Master, Ergebnisse,
+# Modelle). Versioniert werden ausschließlich leere Platzhalter und die
+# Datenschutz-Notiz.
+data/**
+!data/*/
+!data/*/*/
+!data/*/*/*/
+!data/*/.gitkeep
+!data/*/*/.gitkeep
+!data/README.md
+!data/.gitkeep
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# -------------------------------------------------------------------
+# 4. Virtuelle Umgebungen & Python-Artefakte
+# -------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.installed.cfg
+pip-wheel-metadata/
+site-packages/
+
+# -------------------------------------------------------------------
+# 5. Zugangsdaten und Geheimnisse
+# -------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+credentials.json
+token.json
+secrets.json
+*_secret*
+*_token*
+.netrc
+.git-credentials
+
+# -------------------------------------------------------------------
+# 6. Editor- und Betriebssystemdateien
+# -------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -------------------------------------------------------------------
+# 7. Test- und Zwischenstände
+# -------------------------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.tmp
+*.temp

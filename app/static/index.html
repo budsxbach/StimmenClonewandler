@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StimmenClonewandler – lokal auf diesem Laptop</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="glow" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="42" height="42">
+          <circle cx="24" cy="24" r="21" fill="none" stroke="url(#gold)" stroke-width="1.4" opacity=".85"/>
+          <g stroke="url(#gold)" stroke-width="2.2" stroke-linecap="round">
+            <line x1="14" y1="20" x2="14" y2="28"/>
+            <line x1="19" y1="15" x2="19" y2="33"/>
+            <line x1="24" y1="11" x2="24" y2="37"/>
+            <line x1="29" y1="16" x2="29" y2="32"/>
+            <line x1="34" y1="21" x2="34" y2="27"/>
+          </g>
+          <defs>
+            <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f2d98a"/>
+              <stop offset="1" stop-color="#b98a2c"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div>
+        <h1>StimmenClonewandler</h1>
+        <p class="tagline">Eigene Stimme, deutsche Sprachausgabe – ausschließlich lokal</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <span id="status-pill" class="pill pill-neutral">Prüfe Hardware …</span>
+      <span class="pill pill-local" title="Der Server hört nur auf localhost.">Nur localhost</span>
+    </div>
+  </header>
+
+  <div class="privacy-banner" role="note">
+    <span class="lock" aria-hidden="true">🔒</span>
+    <p>Alle Audiodateien und Sprachmodelle werden ausschließlich auf diesem Laptop verarbeitet. Es erfolgt kein Upload ins Internet.</p>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Bereiche">
+    <button class="tab is-active" data-tab="aufnahmen" role="tab" aria-selected="true">Aufnahmen</button>
+    <button class="tab" data-tab="sprache" role="tab" aria-selected="false">Sprachausgabe</button>
+    <button class="tab" data-tab="ergebnisse" role="tab" aria-selected="false">Ergebnisse</button>
+    <button class="tab" data-tab="system" role="tab" aria-selected="false">System &amp; Modell</button>
+  </nav>
+
+  <main>
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-aufnahmen" class="tab-panel is-active" role="tabpanel">
+      <div class="grid two">
+
+        <article class="card">
+          <h2>Aufnahme importieren</h2>
+          <p class="muted">WAV-Dateien bleiben unverändert erhalten – beim Import wird eine Kopie in <code>data/aufnahmen</code> angelegt.</p>
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="WAV-Datei auswählen">
+            <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+              <path d="M12 16V4m0 0L7 9m5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                    fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <strong>WAV-Datei hierher ziehen</strong>
+            <span class="muted">oder klicken zum Auswählen</span>
+            <input type="file" id="file-input" accept=".wav,audio/wav,audio/x-wav" hidden>
+          </div>
+          <p class="hint">Nur WAV (PCM) wird unterstützt. MP3/M4A bitte vorher umwandeln.</p>
+          <div id="upload-progress" class="progress hidden">
+            <div class="progress-bar"><div class="progress-fill indeterminate"></div></div>
+            <span class="progress-label">Datei wird übernommen …</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Mit dem Mikrofon aufnehmen</h2>
+          <p class="muted">Sprich ruhig, gleichmäßig und mit etwas Abstand zum Mikrofon (ca. 20 cm).</p>
+          <div class="recorder">
+            <div class="meter" aria-hidden="true"><div id="meter-fill" class="meter-fill"></div></div>
+            <div class="recorder-row">
+              <button id="btn-record" class="btn btn-gold">
+                <span class="dot"></span> Aufnahme starten
+              </button>
+              <button id="btn-stop-record" class="btn btn-outline" disabled>Stoppen</button>
+              <span id="record-timer" class="timer">00:00</span>
+            </div>
+            <label class="field">
+              <span>Name der Aufnahme (optional)</span>
+              <input id="record-name" type="text" maxlength="80" placeholder="z. B. Referenz ruhig">
+            </label>
+            <p id="record-status" class="hint">Mikrofon wird erst beim Start angefragt.</p>
+          </div>
+        </article>
+      </div>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Meine Aufnahmen</h2>
+          <span id="recording-count" class="badge">0</span>
+        </div>
+        <p id="recordings-empty" class="empty-state">
+          Noch keine Aufnahmen vorhanden. Importiere eine WAV-Datei oder nimm direkt auf.
+        </p>
+        <div id="recordings-list" class="item-list"></div>
+      </article>
+
+      <div class="grid two">
+        <article class="card">
+          <h2>Master-Aufnahme</h2>
+          <p class="muted">
+            Die Master-Aufnahme ist die aufbereitete Referenz für deine Stimme
+            (Mono, beschnitten, normalisiert, höchstens 30 s). Das Original bleibt unverändert.
+          </p>
+          <div id="master-box" class="master-box empty">
+            <p class="muted">Noch keine Master-Aufnahme festgelegt.</p>
+          </div>
+          <p class="hint">
+            Ehrlicher Hinweis: Die Master-Aufnahme allein erzeugt noch keine Stimmkopie.
+            Sie ist die Referenz für die lokale Sprachausgabe.
+          </p>
+        </article>
+
+        <article class="card">
+          <h2>Anhören &amp; vergleichen</h2>
+          <p class="muted">Zwei Dateien gegenüberstellen – Aufnahmen und Ergebnisse gemischt.</p>
+          <label class="field">
+            <span>Datei A</span>
+            <select id="compare-a"></select>
+          </label>
+          <label class="field">
+            <span>Datei B</span>
+            <select id="compare-b"></select>
+          </label>
+          <div class="recorder-row">
+            <button id="btn-play-a" class="btn btn-outline">A abspielen</button>
+            <button id="btn-play-b" class="btn btn-outline">B abspielen</button>
+            <button id="btn-play-ab" class="btn btn-gold">Erst A, dann B</button>
+            <button id="btn-stop-compare" class="btn btn-ghost">Stopp</button>
+          </div>
+          <div class="compare-meta">
+            <div><span class="label">A</span><span id="compare-a-meta" class="muted">–</span></div>
+            <div><span class="label">B</span><span id="compare-b-meta" class="muted">–</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-sprache" class="tab-panel" role="tabpanel">
+      <div class="grid two">
+        <article class="card">
+          <h2>Deutscher Text</h2>
+          <textarea id="tts-text" rows="9" maxlength="4000"
+            placeholder="Schreibe hier den deutschen Text, der mit deiner Stimme vorgelesen werden soll …"></textarea>
+          <div class="row-between">
+            <span id="char-count" class="hint">0 / 4000 Zeichen</span>
+            <button id="btn-example" class="btn btn-ghost btn-small">Beispieltext einfügen</button>
+          </div>
+          <label class="field">
+            <span>Sprachmodell (lokal)</span>
+            <select id="tts-voice"></select>
+          </label>
+          <p id="voice-hint" class="hint"></p>
+          <label class="field">
+            <span>Stimm-Stil</span>
+            <select id="tts-preset"></select>
+          </label>
+          <p id="preset-description" class="hint"></p>
+        </article>
+
+        <article class="card">
+          <h2>Klang &amp; Rechenmodus</h2>
+          <label class="field">
+            <span>Intensität des Feinschliffs: <output id="out-intensity">100 %</output></span>
+            <input id="tts-intensity" type="range" min="0" max="150" step="5" value="100">
+          </label>
+          <label class="field">
+            <span>Sprechtempo: <output id="out-tempo">normal</output></span>
+            <input id="tts-tempo" type="range" min="80" max="125" step="1" value="100">
+          </label>
+          <label class="checkbox">
+            <input id="tts-slow" type="checkbox">
+            <span>
+              <strong>Langsamer CPU-Modus</strong><br>
+              <span class="hint">Ein Rechenkern, einfachere Optimierung, weniger Speicher. Empfohlen für ältere Laptops – dafür dauert die Ausgabe länger.</span>
+            </span>
+          </label>
+          <label class="field">
+            <span>CPU-Kerne für die Berechnung</span>
+            <select id="tts-threads">
+              <option value="1">1 (schonend)</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </label>
+          <label class="checkbox">
+            <input id="tts-adapt" type="checkbox" checked>
+            <span>
+              <strong>Stimmlage an meine Ausgangsstimme anpassen</strong><br>
+              <span class="hint" id="adapt-hint">Die Tonhöhe der Modellstimme wird an die gemessene Sprechlage deiner Referenzaufnahme angenähert (max. ±4 Halbtöne, Dauer bleibt gleich).</span>
+            </span>
+          </label>
+          <label class="field">
+            <span>Tonhöhe feinjustieren: <output id="out-pitch">0 Halbtöne</output></span>
+            <input id="tts-pitch" type="range" min="-5" max="5" step="0.5" value="0">
+          </label>
+          <label class="field">
+            <span>Verfahren</span>
+            <select id="tts-engine">
+              <option value="piper">Piper – lokale CPU-Synthese (empfohlen)</option>
+              <option value="xtts">Eigene Stimmkopie (XTTS-v2, experimentell)</option>
+            </select>
+          </label>
+          <p id="engine-hint" class="hint"></p>
+          <div class="recorder-row">
+            <button id="btn-speak" class="btn btn-gold">Text vorlesen</button>
+            <button id="btn-cancel-job" class="btn btn-ghost" disabled>Abbrechen</button>
+          </div>
+          <div id="tts-progress" class="progress hidden" aria-live="polite">
+            <div class="progress-bar"><div id="tts-progress-fill" class="progress-fill" style="width:0%"></div></div>
+            <div class="row-between">
+              <span id="tts-stage" class="progress-label">Wartet …</span>
+              <span id="tts-elapsed" class="hint">0 s</span>
+            </div>
+          </div>
+          <div id="tts-error" class="alert alert-error hidden" role="alert"></div>
+        </article>
+      </div>
+
+      <article id="tts-result-card" class="card hidden">
+        <div class="card-head">
+          <h2>Ergebnis</h2>
+          <span id="result-badge" class="badge badge-gold">lokal erzeugt</span>
+        </div>
+        <audio id="tts-result-audio" controls preload="metadata"></audio>
+        <div id="tts-result-meta" class="meta-grid"></div>
+        <div class="row-between">
+          <label class="field field-inline">
+            <span>Name für die Ergebnisdatei</span>
+            <input id="result-name" type="text" maxlength="80" placeholder="Sprachausgabe">
+          </label>
+          <button id="btn-save-result" class="btn btn-gold">Als WAV speichern</button>
+        </div>
+        <p id="save-status" class="hint"></p>
+      </article>
+    </section>
+
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-ergebnisse" class="tab-panel" role="tabpanel">
+      <article class="card">
+        <div class="card-head">
+          <h2>Erzeugte Sprachdateien</h2>
+          <span id="result-count" class="badge">0</span>
+        </div>
+        <p class="muted">Alle Dateien liegen in <code>data/ergebnisse</code> auf diesem Laptop.</p>
+        <p id="results-empty" class="empty-state">Noch keine Ergebnisse. Erzeuge zuerst eine Sprachausgabe.</p>
+        <div id="results-list" class="item-list"></div>
+      </article>
+    </section>
+
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-system" class="tab-panel" role="tabpanel">
+      <div class="grid two">
+        <article class="card">
+          <div class="card-head">
+            <h2>Hardware-Prüfung</h2>
+            <button id="btn-refresh-status" class="btn btn-ghost btn-small">Erneut prüfen</button>
+          </div>
+          <div id="hardware-grid" class="meta-grid"></div>
+          <div id="hardware-messages" class="message-list"></div>
+        </article>
+
+        <article class="card">
+          <h2>Lokale Engines</h2>
+          <div id="engine-grid" class="meta-grid"></div>
+          <h3>Geschwindigkeit testen</h3>
+          <p class="hint">Erzeugt einen kurzen Testsatz lokal und misst, wie schnell dieser Laptop rechnet.</p>
+          <button id="btn-benchmark" class="btn btn-outline">Test starten</button>
+          <div id="benchmark-progress" class="progress hidden">
+            <div class="progress-bar"><div id="benchmark-fill" class="progress-fill" style="width:0%"></div></div>
+            <span id="benchmark-stage" class="progress-label">Wartet …</span>
+          </div>
+          <p id="benchmark-result" class="hint"></p>
+        </article>
+      </div>
+
+      <article class="card">
+        <h2>Sprachmodelle</h2>
+        <p class="muted">
+          Modelle werden nicht von der App heruntergeladen. Lege deutsche Piper-Stimmen
+          (<code>*.onnx</code> und <code>*.onnx.json</code>) in <code>data/modelle/piper</code>.
+          Die Anleitung steht in der README.
+        </p>
+        <div id="voices-table" class="item-list"></div>
+      </article>
+
+      <article class="card">
+        <h2>Speicherplatz</h2>
+        <div id="storage-grid" class="meta-grid"></div>
+        <p class="hint">Aufnahmen, Ergebnisse und Modelle lassen sich einzeln löschen. Es wird nichts gesichert oder hochgeladen.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>StimmenClonewandler · vollständig lokal · kein Upload, keine Cloud, keine API-Schlüssel</p>
+    <p class="hint">Verwende ausschließlich deine eigene Stimme oder Aufnahmen, für deren Nutzung du eine ausdrückliche Erlaubnis besitzt.</p>
+  </footer>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
