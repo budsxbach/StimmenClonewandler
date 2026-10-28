@@ -216,7 +216,9 @@ function renderStatus() {
       </div>`;
   }).join("") : `
     <p class="empty-state">Kein Sprachmodell gefunden. Lege eine deutsche Piper-Stimme
-      (<code>*.onnx</code> + <code>*.onnx.json</code>) in <code>data/modelle/piper</code>.</p>`;
+      (<code>*.onnx</code> + <code>*.onnx.json</code>) in <code>data/modelle/piper</code>.<br><br>
+      Einmalig im Terminal herunterladen (mit Internet):<br>
+      <code>.venv/bin/python -m app.voice_setup de_DE-thorsten-medium</code></p>`;
 
   // Speicher
   const storage = status.storage || {};
@@ -240,8 +242,10 @@ function renderVoiceSelect() {
   if (!voices.length) {
     select.innerHTML = '<option value="">Kein Modell vorhanden</option>';
     select.disabled = true;
-    $("#voice-hint").textContent =
-      "Es liegt kein Sprachmodell vor. Ohne Modell kann keine Stimme erzeugt werden – siehe README.";
+    $("#voice-hint").innerHTML =
+      "Es liegt kein Sprachmodell vor. Einmalig im Terminal herunterladen (mit Internet): "
+      + '<code>.venv/bin/python -m app.voice_setup de_DE-thorsten-medium</code>'
+      + " – danach hier auf „Erneut prüfen“.";
     return;
   }
   select.disabled = false;

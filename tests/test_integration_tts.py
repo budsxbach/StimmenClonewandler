@@ -198,7 +198,7 @@ def test_pitch_adaptation_to_base_voice(client, test_voice: Path, tmp_path):
 
 
 def test_adapt_pitch_without_base_voice_is_reported(client, test_voice: Path):
-    from app import master, storage
+    from app import storage
 
     # Master entfernen, damit keine Ausgangsstimme vorliegt
     current = storage.get_master()

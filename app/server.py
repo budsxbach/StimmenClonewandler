@@ -7,6 +7,7 @@ keine API und keinen Schlüssel.
 
 from __future__ import annotations
 
+import socket
 import time
 import traceback
 import uuid
@@ -32,6 +33,7 @@ from .config import (
     MAX_UPLOAD_MB,
     PIPER_DIR,
     PORT,
+    PORT_FILE,
     PRIVACY_NOTICE,
     RECORDINGS_DIR,
     RESULTS_DIR,
@@ -93,6 +95,37 @@ def cleanup_temp(max_age_hours: float = 24.0) -> int:
         except OSError:
             continue
     return removed
+
+
+def port_is_free(host: str, port: int) -> bool:
+    """Prüft, ob ein Port belegt ist (ohne ihn dauerhaft zu belegen)."""
+    probe_host = "0.0.0.0" if host in ("", "localhost") else host
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(0.4)
+        try:
+            probe.bind((probe_host, port))
+        except OSError:
+            return False
+    return True
+
+
+def find_free_port(host: str, preferred: int, attempts: int = 12) -> tuple:
+    """Sucht den ersten freien Port ab `preferred`.
+
+    Rückgabe: (Port, verschoben?) – so startet die App auch dann, wenn der
+    Standardport schon belegt ist (z. B. weil sie bereits in einem anderen
+    Terminal läuft).
+    """
+    for offset in range(max(1, attempts)):
+        candidate = preferred + offset
+        if candidate > 65535:
+            break
+        if port_is_free(host, candidate):
+            return candidate, offset > 0
+    raise OSError(
+        f"Kein freier Port im Bereich {preferred}–{preferred + attempts - 1} gefunden. "
+        "Bitte einen anderen Port wählen, z. B.: SCW_PORT=8900 ./start.sh"
+    )
 
 
 def _status(for_ui: bool = True) -> Dict[str, Any]:
@@ -623,12 +656,13 @@ def add_headers(response: Response):
 # Start
 # ---------------------------------------------------------------------------
 
-def _banner(status: Dict[str, Any]) -> None:
+def _banner(status: Dict[str, Any], port: Optional[int] = None, moved: bool = False) -> None:
     line = "=" * 68
+    shown_port = port or PORT
     print(line)
     print(f"  {APP_NAME} {APP_VERSION} – vollständig lokal")
     print(line)
-    print(f"  Adresse:   http://{HOST}:{PORT}")
+    print(f"  Adresse:   http://{HOST}:{shown_port}")
     print(f"  Daten:     {hardware.DATA_DIR}")
     print(f"  Modelle:   {PIPER_DIR}")
     system = status["system"]
@@ -644,6 +678,12 @@ def _banner(status: Dict[str, Any]) -> None:
     print(line)
     print(f"  {PRIVACY_NOTICE}")
     print(line)
+    if moved:
+        print(f"  [!] Port {PORT} war bereits belegt (läuft die App schon in einem")
+        print(f"      anderen Fenster?). Darum läuft diese Instanz auf Port {shown_port}.")
+        print(f"      Belegten Port finden:  ss -ltnp 'sport = :{PORT}'")
+        print(f"      Prozess beenden:       fuser -k {PORT}/tcp")
+        print(line)
     print("  Beenden mit Strg+C")
     print()
 
@@ -661,15 +701,27 @@ def main() -> None:
     removed = cleanup_temp()
     if removed:
         print(f"[i] {removed} alte Vorschaudateien entfernt.")
+
+    try:
+        port, moved = find_free_port(HOST, PORT)
+    except OSError as exc:
+        print(f"[!] {exc}")
+        raise SystemExit(1)
+
+    try:
+        PORT_FILE.write_text(str(port), encoding="utf-8")
+    except OSError:
+        pass
+
     try:
         status = _status()
-        _banner(status)
+        _banner(status, port=port, moved=moved)
     except Exception:
         traceback.print_exc()
 
     app.run(
         host=HOST,
-        port=PORT,
+        port=port,
         debug=False,
         use_reloader=False,
         threaded=True,

@@ -82,12 +82,15 @@ API-Schlüssel, keinen externen Voice-Anbieter und keine Telemetrie.
 
 ---
 
+> Kompakte Schritt-für-Schritt-Anleitung inklusive Bedienung und
+> Problemlösungen: **[INSTALL.md](INSTALL.md)**
+
 ## 2. Installation unter Windows (Schritt für Schritt)
 
 Voraussetzungen: Windows 10/11, ca. 1 GB freier Speicher, Internet
 **nur einmalig** für die Installation der Python-Pakete.
 
-1. **Python 3.9–3.12 installieren**
+1. **Python 3.11–3.14 installieren** (getestet mit 3.14.4 und 3.11)
    - <https://www.python.org/downloads/windows/>
    - Beim Installieren unbedingt **„Add python.exe to PATH“** anhaken.
    - Prüfen: `Eingabeaufforderung` öffnen und `python --version` eingeben.
@@ -123,6 +126,15 @@ python3 -m venv .venv
 .venv/bin/python -m app.server
 ```
 
+Sprachmodell (einmalig, mit Internet):
+
+```bash
+.venv/bin/python -m app.voice_setup de_DE-thorsten-medium
+```
+
+Ist der Port 8765 belegt, startet die App automatisch auf dem nächsten freien
+Port und zeigt die richtige Adresse an.
+
 ### Manuelle Installation (falls das Startskript nicht verwendet werden soll)
 
 ```bat
@@ -142,6 +154,19 @@ Die App bindet ausschließlich an `127.0.0.1` und ist damit im Heimnetz
 
 Die App lädt **nichts** selbst herunter. Du entscheidest bewusst, welche
 Stimme auf deinem Laptop liegt.
+
+**Der einfache Weg** – eingebauter Helfer (nur auf deinen Befehl, einmalig mit Internet):
+
+```bash
+.venv/bin/python -m app.voice_setup --list                    # deutsche Stimmen anzeigen
+.venv/bin/python -m app.voice_setup de_DE-thorsten-medium     # empfohlene Stimme laden
+.venv/bin/python -m app.voice_setup --installed               # lokal vorhandene prüfen
+```
+
+Die Web-App selbst bleibt dabei vollständig offline: Nur dieses Kommando holt
+etwas aus dem Internet.
+
+**Der manuelle Weg** – Dateien selbst ablegen:
 
 1. Ordner öffnen: `data\modelle\piper\`
 2. Eine **deutsche Piper-Stimme** deiner Wahl hineinlegen. Benötigt werden
@@ -404,6 +429,7 @@ StimmenClonewandler/
 │   ├── master.py          Master-Aufnahme aufbereiten, Ausgangsstimme verwalten
 │   ├── voice_profile.py   grobe Stimmanalyse + Stil-Empfehlung
 │   ├── dsp.py             Zeitdehnung (WSOLA) + Tonhöhen-Anpassung (numpy)
+│   ├── voice_setup.py     Stimmen-Helfer (lädt eine Stimme nur auf Befehl)
 │   ├── tts.py             lokale Sprachausgabe (Piper, optional XTTS)
 │   └── static/            Oberfläche (index.html, style.css, app.js, favicon)
 ├── data/                  NUR lokal – von Git ausgeschlossen
@@ -416,6 +442,7 @@ StimmenClonewandler/
 │       └── xtts/          optionales XTTS-v2-Modell
 ├── tests/                 Tests (WAV, Analyse, Ablage, API, Sprachkette)
 │   └── test_voice_factory.py  erzeugt eine *Teststimme* (Ton) für End-to-End-Tests
+├── INSTALL.md             ausführliche Installations- und Bedienungsanleitung
 ├── start_windows.bat      Startskript für Windows
 ├── start.sh               Startskript für Linux/macOS
 ├── requirements.txt
@@ -473,6 +500,9 @@ Editor-Dateien und alle Audio-/Modellformate aus.
 | Problem | Lösung |
 | --- | --- |
 | „Python wurde nicht gefunden“ | Python neu installieren, „Add python.exe to PATH“ anhaken |
+| `Port 8765 is in use` | Die App wählt automatisch den nächsten freien Port (siehe Konsole). Alte Instanz beenden: `fuser -k 8765/tcp` |
+| `python3.12` wird nicht gefunden | Nicht nötig – Ubuntu 26.04 liefert 3.12 nicht aus, **3.14 funktioniert** |
+| `Sprache: NICHT bereit` beim Start | Normal, solange kein Modell vorliegt – Abschnitt 3 |
 | Installation schlägt fehl | einmalig Internet nötig, Firewall/Proxy prüfen, `python -m pip install -r requirements.txt` manuell ausführen |
 | Kein Mikrofonzugriff | Browsermenü → Berechtigungen → Mikrofon für `127.0.0.1` erlauben |
 | Port 8765 belegt | `set SCW_PORT=8800` und erneut starten |
