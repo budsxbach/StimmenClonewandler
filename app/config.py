@@ -27,6 +27,10 @@ XTTS_DIR = MODELS_DIR / "xtts"                 # optionales XTTS-v2-Modell
 
 STATIC_DIR = BASE_DIR / "app" / "static"
 
+# Diese Datei enthält den tatsächlich benutzten Port (falls 8765 belegt war),
+# damit das Startskript den Browser auf die richtige Adresse schicken kann.
+PORT_FILE = DATA_DIR / ".port"
+
 # Server: standardmäßig NUR localhost (kein Zugriff aus dem Netzwerk).
 HOST = os.environ.get("SCW_HOST", "127.0.0.1")
 PORT = int(os.environ.get("SCW_PORT", "8765"))

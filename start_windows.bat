@@ -76,6 +76,17 @@ if not exist "data\tmp" mkdir "data\tmp"
 if not exist "data\modelle\piper" mkdir "data\modelle\piper"
 if not exist "data\modelle\xtts" mkdir "data\modelle\xtts"
 
+rem --- Hinweis, falls noch kein Sprachmodell vorliegt -------------------
+if not exist "data\modelle\piper\*.onnx" (
+    echo.
+    echo [!] Es liegt noch kein Sprachmodell vor - ohne Modell kann die App
+    echo     keine Stimme erzeugen. Einmalig herunterladen (mit Internet):
+    echo.
+    echo       .venv\Scripts\python -m app.voice_setup --list
+    echo       .venv\Scripts\python -m app.voice_setup de_DE-thorsten-medium
+    echo.
+)
+
 rem --- Browser oeffnen (kurz verzoegert) -----------------------------
 start "" cmd /c "timeout /t 3 >nul & start http://127.0.0.1:8765"
 
