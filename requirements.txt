@@ -1,0 +1,17 @@
+# Laufzeit-Abhängigkeiten für den StimmenClonewandler
+# Installation:  python -m pip install -r requirements.txt
+#
+# Alles läuft lokal auf der CPU. Es wird keine Cloud, keine API und kein
+# API-Schlüssel verwendet.
+
+flask>=3.0,<4.0          # lokaler Webserver (nur 127.0.0.1)
+piper-tts>=1.2,<2.0      # lokale Sprachsynthese auf der CPU (bringt numpy + onnxruntime mit)
+
+# ---------------------------------------------------------------------------
+# Optional: eigene Stimmkopie (XTTS-v2). Sehr groß, auf älteren Laptops meist
+# unbrauchbar – deshalb standardmäßig NICHT installiert. Nur eintragen, wenn du
+# es wirklich willst (die App meldet sonst ehrlich, dass es nicht verfügbar ist):
+#
+# torch>=2.2 --index-url https://download.pytorch.org/whl/cpu
+# coqui-tts>=0.24
+# ---------------------------------------------------------------------------
