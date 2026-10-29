@@ -345,6 +345,9 @@ data/modelle/      Piper-Stimmen (+ optional XTTS)
 | Kein Mikrofonzugriff | Browser fragt einmalig – Erlaubnis für `127.0.0.1` geben |
 | Seite lädt nicht | Terminal offen lassen; Adresse **mit http**, nicht https |
 | Sprache klingt nicht deutsch | deutsches Modell `de_DE-…` wählen |
+| `coqui-tts` installiert, XTTS trotzdem „nicht verfügbar“ | PyTorch fehlt – `pip install "coqui-tts[cpu]"` (PyTorch ist bei coqui-tts ein Extra, kein Grundpaket) |
+| XTTS meldet „Modell unvollständig“ | Es fehlen Modelldateien – `python -m app.voice_setup --xtts` ergänzt sie (Prüfsummen werden geprüft) |
+| XTTS bricht beim Laden ab | Zu wenig Arbeitsspeicher (8 GiB ist knapp): alle anderen Programme schließen, kurze Sätze verwenden |
 | Sprachausgabe sehr langsam | kürzere Absätze, „Langsamer CPU-Modus“ **aus**, andere Programme schließen |
 
 ### 8.5 Nach jedem `fuser -k` kommt eine neue Prozessnummer
@@ -404,20 +407,63 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 ## 9. Optional: echte Stimmkopie (XTTS-v2)
 
-Nur wenn du es wirklich willst – auf diesem Laptop ist es langsam.
+Nur wenn du es wirklich willst – auf diesem Laptop ist es langsam. Piper bleibt
+die schnelle Standardlösung; XTTS-v2 ist die einzige Möglichkeit, deine
+Stimm**farbe** nachzubilden.
+
+### 9.1 Welches Modell ist das?
+
+Es gibt genau **ein** XTTS-v2-Checkpoint für `coqui-tts`:
+`tts_models/multilingual/multi-dataset/xtts_v2` (17 Sprachen, Deutsch enthalten,
+Sprachkürzel `de`). Es liegt als Dateisatz in der Modellablage
+`tts-hub/XTTS-v2` (Hugging-Face-Spiegel der Coqui-Ablage):
+
+| Datei | Größe | Zweck |
+| --- | --- | --- |
+| `model.pth` | 1,74 GiB | das eigentliche Modell |
+| `speakers_xtts.pth` | 7,4 MB | Sprecher-Statistiken |
+| `vocab.json` | 353 KB | Tokenizer |
+| `config.json` | 4 KB | Architektur |
+| `mel_stats.pth` | 1 KB | Lautstärke-Normalisierung |
+
+Zusammen **~1,9 GB**. Lizenz: **Coqui Public Model License (CPML)** –
+nicht-kommerzielle Nutzung, siehe <https://coqui.ai/cpml>.
+
+### 9.2 PyTorch installieren (wichtig!)
+
+`pip install coqui-tts` allein installiert **kein** PyTorch – PyTorch ist bei
+`coqui-tts` ein Extra. Ohne PyTorch meldet die App ehrlich „nicht verfügbar“.
 
 ```bash
-.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
-.venv/bin/pip install coqui-tts
+.venv/bin/python -m pip install "coqui-tts[cpu]"
 ```
 
-Danach ein XTTS-v2-Modell (`model.pth`, `config.json`, `vocab.json`) nach
-`data/modelle/xtts/` legen, in der App als Verfahren
-„Eigene Stimmkopie (XTTS-v2)“ wählen und eine Master-Aufnahme (12–30 s) festlegen.
+Das zieht `torch` und `torchaudio` in der CPU-Variante mit (~300–500 MB
+Download). Getestet: `coqui-tts 0.28.0`, `torch 2.15.0`, Python 3.14.4 – für
+Python 3.14 gibt es fertige torch-Wheels, es muss also nichts am System
+geändert werden.
 
-**Ehrliche Erwartung:** ~4–5 GB Arbeitsspeicher (bei 8 GiB alles andere schließen)
-und **10–30× langsamer als Echtzeit** – ein 10-Sekunden-Satz braucht 2–5 Minuten.
-Fehlt etwas, meldet die App das und speichert **nichts**.
+### 9.3 Modell laden (nur auf deinen ausdrücklichen Aufruf)
+
+```bash
+.venv/bin/python -m app.voice_setup --xtts
+```
+
+Der Helfer zeigt Lizenz und Größe, fragt einmal nach, lädt nach
+`data/modelle/xtts/`, prüft die SHA-256-Prüfsummen und kann abgebrochene
+Downloads fortsetzen (bereits vorhandene Dateien werden wiederverwendet).
+`--yes` überspringt die Rückfrage, `--force` lädt alles neu. Die Web-App selbst
+lädt **nie** etwas nach.
+
+### 9.4 Nutzen
+
+In der App eine **Master-Aufnahme** (12–30 s, nur deine Stimme) festlegen,
+dann Sprachausgabe → Verfahren „Eigene Stimmkopie (XTTS-v2)“.
+
+**Ehrliche Erwartung:** ~4 GB Arbeitsspeicher beim Laden (bei 8 GiB alles andere
+schließen, sonst bricht es ab) und **10–30× langsamer als Echtzeit** – ein
+10-Sekunden-Satz braucht 2–5 Minuten. Fehlt etwas, meldet die App das und
+speichert **nichts**.
 
 ---
 

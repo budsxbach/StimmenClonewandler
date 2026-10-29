@@ -612,16 +612,25 @@ def synthesize_to_wav(
 # XTTS (optional)
 # ---------------------------------------------------------------------------
 
+_COQUI_CACHE: Dict[str, Any] = {}
+
+
+def _coqui_available() -> tuple:
+    """Prüft einmalig, ob Coqui TTS importierbar ist (Import kostet Sekunden)."""
+    if "ok" not in _COQUI_CACHE:
+        try:
+            import TTS  # noqa: F401
+
+            _COQUI_CACHE.update(ok=True, error=None)
+        except Exception as exc:
+            _COQUI_CACHE.update(ok=False, error=f"{type(exc).__name__}: {exc}")
+    return _COQUI_CACHE["ok"], _COQUI_CACHE["error"]
+
+
 def xtts_requirements() -> Dict[str, Any]:
     torch = hardware.torch_status()
     model = hardware.find_xtts()
-    try:
-        import TTS  # noqa: F401
-        coqui = True
-        coqui_error = None
-    except Exception as exc:
-        coqui = False
-        coqui_error = f"{type(exc).__name__}: {exc}"
+    coqui, coqui_error = _coqui_available()
     system = hardware.system_report()
     available_mb = system.get("ram_available_mb")
     missing = []
@@ -632,12 +641,22 @@ def xtts_requirements() -> Dict[str, Any]:
             "etwa 4–5 GB – bitte alle anderen Programme schließen, sonst bricht der "
             "Vorgang mit einer Fehlermeldung ab (es wird dann nichts gespeichert)."
         )
-    if not torch["available"]:
-        missing.append("PyTorch (pip install torch --index-url https://download.pytorch.org/whl/cpu)")
-    if not coqui:
-        missing.append("Coqui TTS (pip install coqui-tts)")
+    if not torch["available"] or not coqui:
+        # Wichtig: torch ist bei coqui-tts ein Extra. "pip install coqui-tts"
+        # allein installiert PyTorch NICHT.
+        missing.append('PyTorch + Coqui TTS (pip install "coqui-tts[cpu]")')
     if not model.get("present"):
-        missing.append("XTTS-v2-Modell in data/modelle/xtts")
+        if model.get("any_files"):
+            missing.append(
+                "das vollständige XTTS-v2-Modell in data/modelle/xtts (es fehlt: "
+                + ", ".join(model.get("missing") or [])
+                + "; ergänzen mit: python -m app.voice_setup --xtts)"
+            )
+        else:
+            missing.append(
+                "das XTTS-v2-Modell in data/modelle/xtts "
+                "(laden mit: python -m app.voice_setup --xtts)"
+            )
     return {
         "available": not missing,
         "missing": missing,
@@ -648,10 +667,10 @@ def xtts_requirements() -> Dict[str, Any]:
         "coqui": coqui,
         "coqui_error": coqui_error,
         "honest_note": (
-            "XTTS-v2 ist ~2 GB groß und benötigt auf einer reinen CPU meist ein Vielfaches "
-            "der Sprechdauer (oft 5–30×). Auf einem älteren Laptop ist das praktisch oft "
-            "nicht nutzbar. Die App meldet dann einen Fehler – sie behauptet nie, eine "
-            "Stimmkopie sei fertig."
+            "XTTS-v2 ist ~1,9 GB groß, braucht beim Laden rund 4 GB Arbeitsspeicher und "
+            "auf einer reinen CPU meist ein Vielfaches der Sprechdauer (oft 5–30×). Auf "
+            "einem Laptop mit 8 GB ist das knapp und langsam. Die App meldet dann einen "
+            "Fehler – sie behauptet nie, eine Stimmkopie sei fertig."
         ),
     }
 

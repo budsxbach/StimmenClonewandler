@@ -233,18 +233,25 @@ Alle offiziell verfügbaren deutschen Piper-Stimmen:
 
 ### Optionale eigene Stimmkopie (XTTS-v2)
 
-Nur wenn du das wirklich willst – auf einem älteren Laptop meist unbrauchbar:
+Nur wenn du das wirklich willst – auf einem älteren Laptop meist unbrauchbar.
+Dafür gibt es genau **ein** Modell: `tts_models/multilingual/multi-dataset/xtts_v2`
+(Dateisatz `tts-hub/XTTS-v2`, 17 Sprachen inkl. Deutsch, ~1,9 GB, Lizenz
+Coqui Public Model License – nicht-kommerziell).
+
+**Wichtig:** `pip install coqui-tts` bringt **kein** PyTorch mit (PyTorch ist
+dort ein Extra). Ohne PyTorch läuft XTTS nicht:
 
 ```bat
-.venv\Scripts\python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-.venv\Scripts\python -m pip install coqui-tts
+.venv\Scripts\python -m pip install "coqui-tts[cpu]"
+.venv\Scripts\python -m app.voice_setup --xtts
 ```
 
-Danach ein XTTS-v2-Modell (Modell, `config.json`, `vocab.json`) nach
-`data\modelle\xtts\` legen, in der App eine **Master-Aufnahme** festlegen
-(mindestens 6 s, besser 12–30 s ruhige Sprache) und als Verfahren
-„Eigene Stimmkopie (XTTS-v2)“ wählen. Fehlt etwas, meldet die App das
-ehrlich und erzeugt **keine** Datei.
+Der zweite Befehl zeigt Lizenz und Größe, fragt nach und lädt den kompletten
+Dateisatz nach `data\modelle\xtts\` (mit Prüfsummen, wiederaufsetzbar).
+Danach in der App eine **Master-Aufnahme** festlegen (mindestens 6 s, besser
+12–30 s ruhige Sprache) und als Verfahren „Eigene Stimmkopie (XTTS-v2)“
+wählen. Fehlt eine der fünf Modelldateien, meldet die App das ehrlich und
+erzeugt **keine** Datei.
 
 ---
 
@@ -257,7 +264,7 @@ das ehrlich bedeutet – es sind drei Bausteine, die unterschiedlich viel könne
 | --- | --- | --- |
 | **Stimmprofil** | misst mittlere Sprechlage (Grundfrequenz), Tonumfang und einen Helligkeitswert deiner Aufnahme | reine Schätzung, kein Modell |
 | **Tonhöhen-Anpassung** (aktiv) | verschiebt die Stimmlage der Modellstimme auf deine Lage, ohne die Sprechdauer zu verändern (WSOLA + Neubetastung, max. ±4 Halbtöne) | verändert **nicht** die Klangfarbe/Artikulation |
-| **XTTS-v2** (optional) | bildet deine Stimmfarbe aus der Referenz nach | ~2 GB Modell, PyTorch, auf CPU sehr langsam; nur wenn du es bewusst installierst |
+| **XTTS-v2** (optional) | bildet deine Stimmfarbe aus der Referenz nach | ~1,9 GB Modell + ~4 GB RAM, PyTorch, auf CPU sehr langsam; nur wenn du es bewusst installierst |
 
 ### So legst du deine Stimme fest
 
@@ -392,7 +399,7 @@ Gemeldete Ausstattung: Dell Latitude 5530 · Intel Core i5-1235U (12 Threads,
 
 **XTTS-v2 (echte Stimmkopie) auf diesem Laptop – ehrliche Einschätzung**
 
-- PyTorch (CPU) + Modell belegen ~4–5 GB Arbeitsspeicher. Bei 8 GiB gesamt
+- PyTorch (CPU) + Modell belegen ~4 GB Arbeitsspeicher. Bei 8 GiB gesamt
   funktioniert es nur, wenn fast alles andere geschlossen ist. Die App warnt
   dich, wenn weniger als 4,5 GB frei sind.
 - Rechenzeit: realistisch **10–30× langsamer als Echtzeit** – ein Satz von
@@ -527,8 +534,9 @@ Editor-Dateien und alle Audio-/Modellformate aus.
   rechte verletzen und ist in der EU (u. a. AI Act, DSGVO) rechtlich riskant.
 - Kennzeichne erzeugte Sprachaufnahmen gegenüber Dritten als synthetisch.
 - Piper ist MIT-lizenziert; einzelne Stimmen haben eigene Lizenzen.
-  XTTS-v2 (Coqui) unterliegt der Coqui Public Model License
-  (nicht-kommerziell) – prüfe das vor einer Nutzung.
+  XTTS-v2 (Coqui) unterliegt der Coqui Public Model License (CPML,
+  nicht-kommerziell, <https://coqui.ai/cpml>) – für den privaten Gebrauch
+  gedacht; prüfe die Lizenz, bevor du etwas veröffentlichst.
 
 ---
 

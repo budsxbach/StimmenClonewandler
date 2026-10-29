@@ -153,3 +153,22 @@ def test_unknown_route_is_json_404(client):
     response = client.get("/api/gibtsnicht")
     assert response.status_code == 404
     assert response.get_json()["ok"] is False
+
+
+def test_status_reports_whether_xtts_can_really_run(client):
+    """Die Oberfläche muss zwischen „Dateien liegen da“ und „läuft“ unterscheiden.
+
+    Vorher lieferte /api/status nur den Dateibefund (hardware.find_xtts), die
+    Oberfläche fragte aber `available` ab – und zeigte deshalb immer
+    „nicht ausführbar“, selbst wenn PyTorch und Modell vorhanden waren.
+    """
+    payload = client.get("/api/status").get_json()
+    xtts = payload["xtts"]
+    assert "available" in xtts
+    assert isinstance(xtts["available"], bool)
+    assert "present" in xtts
+    assert "missing" in xtts
+    assert "honest_note" in xtts
+    # Ohne PyTorch ist die Stimmkopie ehrlich als nicht verfügbar gemeldet.
+    assert xtts["available"] is False
+    assert any("coqui-tts[cpu]" in item for item in xtts["missing"])

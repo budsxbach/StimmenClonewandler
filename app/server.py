@@ -208,6 +208,16 @@ def _status(for_ui: bool = True) -> Dict[str, Any]:
     if for_ui and STATUS_CACHE["value"] and (now - STATUS_CACHE["time"]) < STATUS_TTL_SECONDS:
         return STATUS_CACHE["value"]
     payload = hardware.status()
+    # Die Oberfläche braucht nicht nur "liegt die Datei da?", sondern auch
+    # "kann die App das überhaupt ausführen?" – also PyTorch, Coqui TTS und
+    # den vollständigen Modelldateisatz. hardware.status() liefert nur Ersteres.
+    xtts_requirements = tts.xtts_requirements()
+    payload["xtts"] = {
+        **xtts_requirements,
+        "present": bool(xtts_requirements["model"].get("present")),
+        "size_mb": xtts_requirements["model"].get("size_mb", 0),
+        "missing_files": list(xtts_requirements["model"].get("missing") or []),
+    }
     payload.update({
         "app": {"name": APP_NAME, "version": APP_VERSION},
         "privacy_notice": PRIVACY_NOTICE,

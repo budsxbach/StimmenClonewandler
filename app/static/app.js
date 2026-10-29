@@ -408,12 +408,12 @@ function renderEngineHint() {
   if (engine === "xtts") {
     const xtts = state.status?.xtts || {};
     if (!xtts.available) {
-      const missing = (xtts.missing || []).join(", ") || "PyTorch, Coqui TTS und das XTTS-v2-Modell";
+      const missing = (xtts.missing || []).join(", ") || 'PyTorch + Coqui TTS (pip install "coqui-tts[cpu]") und das XTTS-v2-Modell (python -m app.voice_setup --xtts)';
       hint.innerHTML = `<span class="alert alert-warn">Eigene Stimmkopie ist auf diesem Laptop nicht ausführbar. Es fehlt: ${escapeHtml(missing)}. `
         + `Die App verweigert dann ehrlich die Ausgabe – sie behauptet nie, eine Kopie sei fertig.</span>`;
     } else {
-      hint.innerHTML = `<span class="alert alert-info">XTTS-v2 ist ~2 GB groß und auf einer reinen CPU oft 5–30× langsamer als Echtzeit. `
-        + `Auf einem älteren Laptop kann ein einzelner Satz mehrere Minuten dauern.</span>`;
+      hint.innerHTML = `<span class="alert alert-info">XTTS-v2 ist ~1,9 GB groß, braucht ~4 GB Arbeitsspeicher und ist auf einer reinen CPU oft 5–30× langsamer als Echtzeit. `
+        + `Ein einzelner Satz kann mehrere Minuten dauern – bitte nur die eigene Stimme als Referenz verwenden.</span>`;
     }
   } else {
     hint.textContent = "Piper ist klein, CPU-freundlich und für diesen Laptop empfohlen.";
