@@ -214,6 +214,24 @@ cd ~/Schreibtisch/AuronOrigin/StimmenClonewandler
 Danach in der App: **Tab „System & Modell“ → „Erneut prüfen“**. Die Stimme
 erscheint als *Deutsch*, oben steht „Bereit“.
 
+### Welche Stimme für „alt, weise, warm“?
+
+| Stimme | Warum |
+| --- | --- |
+| `de_DE-mls-medium` | **236 Sprecher** in einem Modell – hier findest du tiefe, ruhige Männerstimmen |
+| `de_DE-thorsten_emotional-medium` | dieselbe Stimme wie Thorsten, mit Emotions-Kennungen (ruhig/sachlich) |
+| `de_DE-thorsten-high` | klangtreuer, aber eher jünger und neutral |
+| `de_DE-pavoque-low` | männlich, rau – Lizenz nur nicht-kommerziell (CC BY-NC-SA) |
+
+```bash
+.venv/bin/python -m app.voice_setup de_DE-mls-medium
+```
+
+Danach in der App: **Sprachausgabe → Sprecher im Modell** wählen, mit
+**„Nächster Sprecher“** Hörproben erzeugen und den passenden Sprecher
+heraussuchen. Stil **„Alt & weise (tief, bedächtig)“** bringt zusätzlich
+Tiefe, Ruhe und eine leichte Rauheit.
+
 ### Empfehlung für deinen Laptop
 
 - Qualitätsstufe **`medium`** (ca. 60 MB) – gutes Verhältnis aus Klang und Tempo

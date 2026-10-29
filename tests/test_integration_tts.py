@@ -219,3 +219,92 @@ def test_adapt_pitch_without_base_voice_is_reported(client, test_voice: Path):
     pitch = job["result"]["pitch"]
     assert pitch["adapted"] is False
     assert pitch["reason"]
+
+
+def test_old_wise_preset_is_deeper_and_slower():
+    from app import tts
+
+    preset = tts.PRESET_BY_ID["alt_weise"]
+    assert preset.label.startswith("Alt & weise")
+    assert preset.pitch < 0, "Das Preset senkt die Tonhöhe ab"
+    assert preset.length_scale > tts.PRESET_BY_ID["weise"].length_scale
+    assert preset.low_shelf_db > tts.PRESET_BY_ID["weise"].low_shelf_db
+
+    from app.wav_io import read_wav, to_mono
+    from app import voice_profile
+    import math
+    from pathlib import Path as _Path
+    import tempfile
+
+    rate = 22050
+    tone = [0.4 * math.sin(2 * math.pi * 120.0 * i / rate) for i in range(rate * 3)]
+    styled = tts.apply_style(tone, rate, preset, intensity=1.0, tempo_user=1.0)
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as handle:
+        target = _Path(handle.name)
+    from app.wav_io import write_wav
+
+    write_wav(target, rate, [styled])
+    measured_rate, data = read_wav(target)
+    measured = voice_profile.estimate_f0(to_mono(data), measured_rate)["median_hz"]
+    target.unlink()
+    assert measured is not None and measured < 118.0, "Klangprobe wird tiefer"
+
+
+def test_audition_endpoint(client, test_voice: Path):
+    response = client.post("/api/audition", json={
+        "voice": test_voice.stem,
+        "preset": "alt_weise",
+        "slow_mode": True,
+        "threads": 1,
+    })
+    assert response.status_code == 200, response.get_data(as_text=True)
+    job = _wait_for_job(client, response.get_json()["job"]["id"])
+    assert job["status"] == "fertig", job.get("error")
+    assert job["kind"] == "audition"
+    assert job["result"]["duration_s"] > 0.2
+    assert client.get(f"/api/jobs/{job['id']}/audio").data[:4] == b"RIFF"
+
+
+def test_multispeaker_selection_changes_voice(client):
+    from test_voice_factory import build_test_voice
+    from app import voice_profile
+    from app.wav_io import read_wav, to_mono
+    from pathlib import Path as _Path
+    import tempfile
+
+    name = "de_DE-mls-test-medium"
+    model = build_test_voice(hardware.PIPER_DIR, name=name, num_speakers=6)
+    server.STATUS_CACHE["value"] = None
+    try:
+        pitches = {}
+        for speaker in (0, 5):
+            response = client.post("/api/audition", json={
+                "voice": name,
+                "speaker_id": speaker,
+                "preset": "neutral",
+                "slow_mode": True,
+                "threads": 1,
+            })
+            job = _wait_for_job(client, response.get_json()["job"]["id"])
+            assert job["status"] == "fertig", job.get("error")
+            audio = client.get(f"/api/jobs/{job['id']}/audio").data
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as handle:
+                target = _Path(handle.name)
+            target.write_bytes(audio)
+            rate, data = read_wav(target)
+            pitches[speaker] = voice_profile.estimate_f0(to_mono(data), rate)["median_hz"]
+            target.unlink()
+        assert pitches[0] and pitches[5]
+        assert pitches[5] > pitches[0] * 1.1, "Sprecher-ID verändert die Stimme"
+
+        voices = client.get("/api/voices").get_json()["voices"]
+        meta = [voice for voice in voices if voice["name"] == name][0]
+        assert meta["num_speakers"] == 6
+        assert len(meta["speaker_id_map"]) == 6
+    finally:
+        tts.unload_voices()
+        for suffix in ("", ".json"):
+            candidate = _Path(str(model) + suffix)
+            if candidate.exists():
+                candidate.unlink()
+        server.STATUS_CACHE["value"] = None

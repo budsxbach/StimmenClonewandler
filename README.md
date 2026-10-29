@@ -189,12 +189,38 @@ etwas aus dem Internet.
 3. In der App auf **System & Modell → Erneut prüfen** klicken.
    Unter „Sprachmodelle“ erscheint die Stimme als *Deutsch*.
 
-**Empfehlung für die gewünschte Stimme:** eine **männliche deutsche
-Piper-Stimme in mittlerer Qualität** (`-medium`, ca. 60 MB) – z. B.
-`de_DE-thorsten-medium`. Sie klingt natürlich, läuft auf zwei Kernen und
-lässt sich mit den Stil-Vorlagen gut in Richtung „warm, ruhig, leicht tief“
-formen. Probiere die Stile in der App durch; die Klangfarbe selbst stammt
-immer vom Modell.
+### Welche deutsche Stimme passt?
+
+Alle offiziell verfügbaren deutschen Piper-Stimmen:
+
+| Stimme | Qualität | Geschlecht | Lizenz der Daten | Eignung für „alt, weise, warm“ |
+| --- | --- | --- | --- | --- |
+| `de_DE-mls-medium` | medium (22 kHz, 236 Sprecher!) | gemischt | CC BY 4.0 | **beste Wahl** – viele männliche Sprecher, darunter tiefe, ruhige |
+| `de_DE-thorsten_emotional-medium` | medium | männlich | CC0 | sehr gut – gleiche Stimme wie Thorsten, mit Emotions-Kennungen (u. a. ruhig/traurig) |
+| `de_DE-thorsten-high` | high (22 kHz, ~114 MB) | männlich | CC0 | gute Klangtreue, neutral-freundlich, klingt eher jünger |
+| `de_DE-thorsten-medium` | medium (~63 MB) | männlich | CC0 | Standard, sachlich-neutral |
+| `de_DE-pavoque-low` | low (16 kHz) | männlich | **CC BY-NC-SA** (nur nicht-kommerziell) | möglich, aber rau und lizenzbeschränkt |
+| `de_DE-karlsson-low` | low | männlich | M-AILABS | rau, eher jung |
+| `de_DE-ramona-low`, `de_DE-kerstin-low`, `de_DE-eva_k-x_low` | low | weiblich | verschiedene | – |
+
+**Vorgehen für eine alte, weise Männerstimme**
+
+1. `de_DE-mls-medium` installieren (236 Sprecher in einem Modell):
+   ```bash
+   .venv/bin/python -m app.voice_setup de_DE-mls-medium
+   ```
+2. In der App unter **Sprachausgabe → Sprecher im Modell** durchschalten
+   und mit **„Nächster Sprecher“** jeweils eine Hörprobe erzeugen – so findest
+   du in wenigen Minuten den tiefsten, ruhigsten Sprecher.
+3. Stil **„Alt & weise (tief, bedächtig)“** wählen: senkt die Tonhöhe um
+   1,5 Halbtöne (ohne Tempoänderung), hebt die Tiefen an, zähmt die Höhen,
+   spricht langsamer und setzt eine sehr leichte Rauheit.
+4. Mit **Tonhöhe feinjustieren** und **Sprechtempo** nach Geschmack nachziehen.
+
+> Ehrlich: Kein Piper-Modell ist mit „alter weiser Erzähler“ trainiert. Die
+> Kombination aus Sprecherwahl + „Alt & weise“ + Tonhöhenabsenkung kommt dem
+> am nächsten, bleibt aber eine Annäherung. Für eine wirklich eigene
+> Klangfarbe bleibt nur XTTS-v2 mit deiner Referenzaufnahme (langsam auf CPU).
 
 **Wichtig zu den Modell-Dateien:**
 

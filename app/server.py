@@ -567,6 +567,44 @@ def api_job_audio(job_id: str):
     return send_file(str(path), mimetype="audio/wav", conditional=True, max_age=0)
 
 
+AUDITION_TEXT = (
+    "Setz dich einen Moment hin und atme ruhig. Manche Dinge brauchen Zeit, "
+    "und das ist in Ordnung."
+)
+
+
+@app.post("/api/audition")
+def api_audition():
+    """Kurze Hörprobe einer Stimme/eines Sprechers mit den aktuellen Einstellungen."""
+    if not hardware.piper_status()["available"]:
+        return _json_error("Die lokale Sprach-Engine (Piper) ist nicht installiert.", 409)
+    if not any(v.get("usable") for v in hardware.find_piper_voices()):
+        return _json_error("Es liegt kein Sprachmodell für die Hörprobe vor.", 409)
+
+    payload = request.get_json(silent=True) or {}
+    text = str(payload.get("text") or AUDITION_TEXT)[:400]
+    options = tts.SynthesisOptions.from_payload({
+        **payload,
+        "adapt_pitch": False,   # Hörprobe bleibt bei der reinen Modellstimme
+    })
+    job = jobs.create("audition")
+
+    def runner(started):
+        meta = tts.synthesize_to_wav(
+            text,
+            _temp_path(started.id),
+            options,
+            progress=lambda percent, stage: started.update(percent, f"Hörprobe: {stage}"),
+        )
+        meta["preview_url"] = f"/api/jobs/{started.id}/audio"
+        meta["text"] = text
+        meta["speaker_id"] = options.speaker_id
+        return meta
+
+    jobs.start(job, runner)
+    return jsonify({"ok": True, "job": job.snapshot(), "text": text})
+
+
 @app.post("/api/benchmark")
 def api_benchmark():
     """Kurzer Test: wie schnell rechnet dieser Laptop die Sprachausgabe?"""

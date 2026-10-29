@@ -257,10 +257,108 @@ function renderVoiceSelect() {
   const exists = voices.some((voice) => voice.name === current);
   if (exists) select.value = current;
   const selected = voices.find((voice) => voice.name === select.value) || voices[0];
+  renderSpeakerSelect(selected);
   $("#voice-hint").textContent = selected
     ? `Lokales Modell · ${selected.dataset || "unbekannter Datensatz"} · ${selected.sample_rate || "?"} Hz`
       + (selected.is_german ? "" : " · Achtung: kein deutsches Modell, Aussprache kann fehlerhaft sein.")
     : "";
+}
+
+function renderSpeakerSelect(voice) {
+  const field = $("#speaker-field");
+  const select = $("#tts-speaker");
+  const nextButton = $("#btn-next-speaker");
+  if (!field || !select) return;
+
+  const speakers = voice && voice.speaker_id_map ? Object.entries(voice.speaker_id_map) : [];
+  if (!voice || speakers.length <= 1) {
+    field.classList.add("hidden");
+    nextButton.classList.add("hidden");
+    select.innerHTML = "";
+    return;
+  }
+
+  field.classList.remove("hidden");
+  nextButton.classList.remove("hidden");
+  const current = select.value;
+  select.innerHTML = speakers.map(([name, id]) =>
+    `<option value="${id}">${escapeHtml(name)} (#${id})</option>`
+  ).join("");
+  if (speakers.some(([, id]) => String(id) === current)) select.value = current;
+}
+
+function initAudition() {
+  const button = $("#btn-audition");
+  const nextButton = $("#btn-next-speaker");
+  const status = $("#audition-status");
+  const audio = $("#audition-audio");
+
+  const start = async () => {
+    const voice = $("#tts-voice").value;
+    if (!voice) {
+      toast("Es liegt kein Sprachmodell vor.", true);
+      return;
+    }
+    const speakerValue = $("#tts-speaker").value;
+    const payload = {
+      voice,
+      speaker_id: speakerValue === "" ? null : Number(speakerValue),
+      preset: $("#tts-preset").value,
+      intensity: Number($("#tts-intensity").value) / 100,
+      tempo: Number($("#tts-tempo").value) / 100,
+      pitch_semitones: Number($("#tts-pitch").value),
+      slow_mode: $("#tts-slow").checked,
+      threads: Number($("#tts-threads").value),
+    };
+    button.disabled = true;
+    nextButton.disabled = true;
+    status.textContent = "Hörprobe wird erzeugt …";
+    try {
+      const response = await api("/api/audition", { method: "POST", body: JSON.stringify(payload) });
+      const jobId = response.job.id;
+      const poll = setInterval(async () => {
+        try {
+          const info = await api(`/api/jobs/${encodeURIComponent(jobId)}`);
+          const job = info.job;
+          status.textContent = job.stage || "läuft …";
+          if (job.status === "fertig") {
+            clearInterval(poll);
+            audio.src = `/api/jobs/${encodeURIComponent(jobId)}/audio?t=${Date.now()}`;
+            audio.classList.remove("hidden");
+            audio.play().catch(() => {});
+            status.textContent = `fertig · ${job.result.duration_s} s`;
+          } else if (job.status === "fehler") {
+            clearInterval(poll);
+            status.textContent = "";
+            toast(job.error || "Hörprobe fehlgeschlagen.", true);
+          }
+        } catch (error) {
+          clearInterval(poll);
+          status.textContent = "";
+          toast(error.message, true);
+        } finally {
+          if (!document.querySelector("#audition-audio").paused) {
+            button.disabled = false;
+            nextButton.disabled = false;
+          }
+        }
+      }, 600);
+      setTimeout(() => { button.disabled = false; nextButton.disabled = false; }, 4000);
+    } catch (error) {
+      status.textContent = "";
+      button.disabled = false;
+      nextButton.disabled = false;
+      toast(error.message, true);
+    }
+  };
+
+  button.addEventListener("click", start);
+  nextButton.addEventListener("click", () => {
+    const select = $("#tts-speaker");
+    if (select.options.length < 2) return;
+    select.selectedIndex = (select.selectedIndex + 1) % select.options.length;
+    start();
+  });
 }
 
 function renderPresetSelect() {
@@ -996,13 +1094,16 @@ function initTtsControls() {
     event.target.dataset.userTouched = "1";
   });
 
+  initAudition();
   $("#btn-speak").addEventListener("click", startSynthesis);
   $("#btn-cancel-job").addEventListener("click", cancelJob);
   $("#btn-save-result").addEventListener("click", saveResult);
 }
 
 function collectTtsPayload() {
+  const speakerValue = $("#tts-speaker") ? $("#tts-speaker").value : "";
   const payload = {
+    speaker_id: speakerValue === "" ? null : Number(speakerValue),
     text: $("#tts-text").value.trim(),
     engine: $("#tts-engine").value,
     voice: $("#tts-voice").value || null,

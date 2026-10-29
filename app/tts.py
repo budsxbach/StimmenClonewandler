@@ -63,6 +63,7 @@ class StylePreset:
     high_shelf_db: float = 0.0
     saturation: float = 0.0
     room: float = 0.0            # dezenter Raumanteil (kein Hall-Effekt)
+    pitch: float = 0.0           # feste Tonhöhen-Absenkung in Halbtönen (Alter/Tiefe)
 
 
 PRESETS: Tuple[StylePreset, ...] = (
@@ -83,6 +84,25 @@ PRESETS: Tuple[StylePreset, ...] = (
         high_shelf_db=-2.0,
         saturation=0.07,
         room=0.04,
+    ),
+    StylePreset(
+        id="alt_weise",
+        label="Alt & weise (tief, bedächtig)",
+        description=(
+            "Deutlich tiefer und langsamer: kräftige Tiefen, gezähmte Höhen, leichte "
+            "Rauheit und ein Hauch Raum. Kommt einem älteren, ruhigen Erzähler am nächsten."
+        ),
+        length_scale=1.22,
+        noise_scale=0.72,
+        noise_w_scale=0.86,
+        tempo=0.95,
+        low_shelf_hz=165.0,
+        low_shelf_db=4.0,
+        high_shelf_hz=3000.0,
+        high_shelf_db=-4.0,
+        saturation=0.11,
+        room=0.09,
+        pitch=-1.5,
     ),
     StylePreset(
         id="warm",
@@ -288,6 +308,10 @@ def apply_style(
     if preset.saturation > 0 and amount > 0:
         drive = 1.0 + preset.saturation * amount * 2.2
         values = soft_saturation(values, drive)
+
+    # Feste Stil-Tonhöhe (z. B. „Alt & weise“): klingt tiefer, ohne das Tempo zu ändern
+    if abs(preset.pitch) > 0.05 and amount > 0:
+        values = dsp.pitch_shift(values, preset.pitch * min(1.0, amount), rate)
 
     # Tempo: Stil-Tempo (macht auch etwas tiefer) und Nutzer-Regler kombinieren
     total_tempo = preset.tempo * tempo_user
