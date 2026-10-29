@@ -63,6 +63,7 @@ class StylePreset:
     high_shelf_db: float = 0.0
     saturation: float = 0.0
     room: float = 0.0            # dezenter Raumanteil (kein Hall-Effekt)
+    pitch: float = 0.0           # feste Tonhöhen-Absenkung in Halbtönen (Alter/Tiefe)
 
 
 PRESETS: Tuple[StylePreset, ...] = (
@@ -83,6 +84,25 @@ PRESETS: Tuple[StylePreset, ...] = (
         high_shelf_db=-2.0,
         saturation=0.07,
         room=0.04,
+    ),
+    StylePreset(
+        id="alt_weise",
+        label="Alt & weise (tief, bedächtig)",
+        description=(
+            "Deutlich tiefer und langsamer: kräftige Tiefen, gezähmte Höhen, leichte "
+            "Rauheit und ein Hauch Raum. Kommt einem älteren, ruhigen Erzähler am nächsten."
+        ),
+        length_scale=1.22,
+        noise_scale=0.72,
+        noise_w_scale=0.86,
+        tempo=0.95,
+        low_shelf_hz=165.0,
+        low_shelf_db=4.0,
+        high_shelf_hz=3000.0,
+        high_shelf_db=-4.0,
+        saturation=0.11,
+        room=0.09,
+        pitch=-1.5,
     ),
     StylePreset(
         id="warm",
@@ -288,6 +308,10 @@ def apply_style(
     if preset.saturation > 0 and amount > 0:
         drive = 1.0 + preset.saturation * amount * 2.2
         values = soft_saturation(values, drive)
+
+    # Feste Stil-Tonhöhe (z. B. „Alt & weise“): klingt tiefer, ohne das Tempo zu ändern
+    if abs(preset.pitch) > 0.05 and amount > 0:
+        values = dsp.pitch_shift(values, preset.pitch * min(1.0, amount), rate)
 
     # Tempo: Stil-Tempo (macht auch etwas tiefer) und Nutzer-Regler kombinieren
     total_tempo = preset.tempo * tempo_user
@@ -588,16 +612,25 @@ def synthesize_to_wav(
 # XTTS (optional)
 # ---------------------------------------------------------------------------
 
+_COQUI_CACHE: Dict[str, Any] = {}
+
+
+def _coqui_available() -> tuple:
+    """Prüft einmalig, ob Coqui TTS importierbar ist (Import kostet Sekunden)."""
+    if "ok" not in _COQUI_CACHE:
+        try:
+            import TTS  # noqa: F401
+
+            _COQUI_CACHE.update(ok=True, error=None)
+        except Exception as exc:
+            _COQUI_CACHE.update(ok=False, error=f"{type(exc).__name__}: {exc}")
+    return _COQUI_CACHE["ok"], _COQUI_CACHE["error"]
+
+
 def xtts_requirements() -> Dict[str, Any]:
     torch = hardware.torch_status()
     model = hardware.find_xtts()
-    try:
-        import TTS  # noqa: F401
-        coqui = True
-        coqui_error = None
-    except Exception as exc:
-        coqui = False
-        coqui_error = f"{type(exc).__name__}: {exc}"
+    coqui, coqui_error = _coqui_available()
     system = hardware.system_report()
     available_mb = system.get("ram_available_mb")
     missing = []
@@ -608,12 +641,22 @@ def xtts_requirements() -> Dict[str, Any]:
             "etwa 4–5 GB – bitte alle anderen Programme schließen, sonst bricht der "
             "Vorgang mit einer Fehlermeldung ab (es wird dann nichts gespeichert)."
         )
-    if not torch["available"]:
-        missing.append("PyTorch (pip install torch --index-url https://download.pytorch.org/whl/cpu)")
-    if not coqui:
-        missing.append("Coqui TTS (pip install coqui-tts)")
+    if not torch["available"] or not coqui:
+        # Wichtig: torch ist bei coqui-tts ein Extra. "pip install coqui-tts"
+        # allein installiert PyTorch NICHT.
+        missing.append('PyTorch + Coqui TTS (pip install "coqui-tts[cpu]")')
     if not model.get("present"):
-        missing.append("XTTS-v2-Modell in data/modelle/xtts")
+        if model.get("any_files"):
+            missing.append(
+                "das vollständige XTTS-v2-Modell in data/modelle/xtts (es fehlt: "
+                + ", ".join(model.get("missing") or [])
+                + "; ergänzen mit: python -m app.voice_setup --xtts)"
+            )
+        else:
+            missing.append(
+                "das XTTS-v2-Modell in data/modelle/xtts "
+                "(laden mit: python -m app.voice_setup --xtts)"
+            )
     return {
         "available": not missing,
         "missing": missing,
@@ -624,10 +667,10 @@ def xtts_requirements() -> Dict[str, Any]:
         "coqui": coqui,
         "coqui_error": coqui_error,
         "honest_note": (
-            "XTTS-v2 ist ~2 GB groß und benötigt auf einer reinen CPU meist ein Vielfaches "
-            "der Sprechdauer (oft 5–30×). Auf einem älteren Laptop ist das praktisch oft "
-            "nicht nutzbar. Die App meldet dann einen Fehler – sie behauptet nie, eine "
-            "Stimmkopie sei fertig."
+            "XTTS-v2 ist ~1,9 GB groß, braucht beim Laden rund 4 GB Arbeitsspeicher und "
+            "auf einer reinen CPU meist ein Vielfaches der Sprechdauer (oft 5–30×). Auf "
+            "einem Laptop mit 8 GB ist das knapp und langsam. Die App meldet dann einen "
+            "Fehler – sie behauptet nie, eine Stimmkopie sei fertig."
         ),
     }
 

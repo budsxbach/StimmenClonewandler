@@ -139,7 +139,23 @@ Prüfen, ob die Sprach-Engine wirklich installiert ist:
 Sprachmodell (Schritt 4). Alles andere (Aufnahmen, Analyse, Vergleich) funktioniert
 schon.
 
-### 3.5 Port belegt?
+### 3.5 App wieder beenden
+
+```bash
+./stop.sh          # beendet alle Instanzen (auch auf Ausweichports 8766+)
+```
+
+Im laufenden Terminal genügt `Strg+C`. Windows: `stop_windows.bat`.
+
+Startest du die App ein zweites Mal, während sie schon läuft, startet sie
+**keine** zweite Instanz, sondern meldet:
+
+```
+  StimmenClonewandler läuft bereits auf http://127.0.0.1:8765
+  Es wird keine zweite Instanz gestartet.
+```
+
+### 3.6 Port belegt?
 
 Startet die App mit `Port 8765 is in use`, wählt sie **automatisch den nächsten
 freien Port** (8766, 8767 …) und schreibt die richtige Adresse in die Konsole:
@@ -149,13 +165,23 @@ freien Port** (8766, 8767 …) und schreibt die richtige Adresse in die Konsole:
       anderen Fenster?). Darum läuft diese Instanz auf Port 8766.
 ```
 
-Meist läuft die App schon in einem anderen Terminalfenster. Dieses finden und
-beenden:
+Meist läuft die App schon in einem anderen Terminalfenster. Statt einzelne
+Prozesse zu jagen, alle Instanzen auf einmal beenden:
+
+```bash
+./stop.sh
+```
+
+Manuell:
 
 ```bash
 ss -ltnp 'sport = :8765'      # zeigt das Programm hinter dem Port
-fuser -k 8765/tcp             # beendet es (Alternative zu Strg+C)
+fuser -k 8765/tcp             # beendet genau diesen Prozess
+pkill -f app.server           # beendet alle Instanzen der App
 ```
+
+> **Wenn nach jedem `fuser -k` sofort eine neue Prozessnummer auftaucht**, wird
+> die App von etwas anderem neu gestartet. Siehe Abschnitt 8.5.
 
 Oder einen festen anderen Port verwenden:
 
@@ -187,6 +213,72 @@ cd ~/Schreibtisch/AuronOrigin/StimmenClonewandler
 
 Danach in der App: **Tab „System & Modell“ → „Erneut prüfen“**. Die Stimme
 erscheint als *Deutsch*, oben steht „Bereit“.
+
+### Welche Stimme für „alt, weise, warm“?
+
+| Stimme | Warum |
+| --- | --- |
+| `de_DE-mls-medium` | **236 Sprecher** in einem Modell – hier findest du tiefe, ruhige Männerstimmen |
+| `de_DE-thorsten_emotional-medium` | dieselbe Stimme wie Thorsten, mit Emotions-Kennungen (ruhig/sachlich) |
+| `de_DE-thorsten-high` | klangtreuer, aber eher jünger und neutral |
+| `de_DE-pavoque-low` | männlich, rau – Lizenz nur nicht-kommerziell (CC BY-NC-SA) |
+
+```bash
+.venv/bin/python -m app.voice_setup de_DE-mls-medium
+```
+
+Danach in der App: **Sprachausgabe → Sprecher im Modell** wählen, mit
+**„Nächster Sprecher“** Hörproben erzeugen und den passenden Sprecher
+heraussuchen. Stil **„Alt & weise (tief, bedächtig)“** bringt zusätzlich
+Tiefe, Ruhe und eine leichte Rauheit.
+
+### Nutzungsrechte: welche Stimme darf in ein YouTube-Video?
+
+Sobald du mit dem Video **Geld verdienst** (Werbung, Sponsoring, Produktlinks,
+Bezahlmitgliedschaften, Firmenkanal), gilt das als **kommerzielle Nutzung**.
+Dann entscheidet die Lizenz der Trainingsdaten der Stimme – nicht die Lizenz
+von Piper selbst (Piper ist MIT und erlaubt alles):
+
+| Stimme | Lizenz der Trainingsdaten | Kommerziell? | Auflage |
+| --- | --- | --- | --- |
+| `de_DE-thorsten-high` / `-medium` | CC0 1.0 | **ja** | keine |
+| `de_DE-thorsten_emotional-medium` | CC0 1.0 | **ja** | keine |
+| `de_DE-kerstin-low` | CC0 1.0 | **ja** | keine |
+| `de_DE-mls-medium` | CC BY 4.0 | **ja** | Namensnennung (MLS-Datensatz + Piper) |
+| `de_DE-eva_k-x_low`, `-karlsson-low`, `-ramona-low` | M-AILABS (BSD-artig) | **ja** | Copyright-Hinweis beibehalten |
+| `de_DE-pavoque-low` | CC BY-NC-SA 4.0 | **nein** | nur privat / Hobby ohne Geld |
+| XTTS-v2 (eigene Stimmkopie) | Coqui Public Model License 1.0.0 | **nein** | „only non-commercial use of a model **and its outputs**“ |
+
+**Empfehlung für deinen Kanal**
+
+- `de_DE-thorsten-high` – klare, männliche Stimme, **CC0**, keinerlei Auflagen.
+- `de_DE-mls-medium` – wenn es tief und alt klingen soll (236 Sprecher);
+  dann Namensnennung in die Videobeschreibung.
+- `de_DE-thorsten_emotional-medium` – wenn du Betonung brauchst (Emotions-Kennungen).
+
+Textbaustein für die Videobeschreibung (bei `mls`):
+
+> Sprachausgabe: Piper (MIT) – Stimme „mls-medium“ (CC BY 4.0),
+> trainiert mit dem MLS-Datensatz (CC BY 4.0, https://www.openslr.org/94/).
+
+**Pflichten rund ums Video**
+
+- Synthetische Sprache in YouTube Studio als **„verändert/synthetisch“**
+  kennzeichnen, wenn sie realistisch klingt – das ist YouTubes eigene Regel.
+- In der EU zusätzlich transparent machen, dass die Sprache **KI-erzeugt** ist
+  (EU AI Act, Art. 50).
+- Nur die **eigene Stimme** oder ausdrücklich erlaubte Aufnahmen klonen.
+  Fremde, prominent besetzte oder politische Stimmen: Finger weg.
+- Deine eigene Stimme darfst du kommerziell nutzen – aber eine mit **XTTS-v2**
+  erzeugte Ausgabe fällt unter die Modelllizenz und ist damit **nicht** für
+  monetarisierte Videos erlaubt. Nimm dafür Piper.
+
+Die App zeigt die Lizenz beim Auswählen der Stimme direkt an, und du kannst
+die Übersicht jederzeit offline abrufen:
+
+```bash
+.venv/bin/python -m app.voice_setup --licenses
+```
 
 ### Empfehlung für deinen Laptop
 
@@ -291,7 +383,8 @@ data/modelle/      Piper-Stimmen (+ optional XTTS)
 
 | Meldung / Problem | Lösung |
 | --- | --- |
-| `Port 8765 is in use` | App wählt automatisch den nächsten Port (siehe Konsole). Alte Instanz beenden: `fuser -k 8765/tcp` |
+| `Port 8765 is in use` | App wählt automatisch den nächsten Port (siehe Konsole). Alte Instanz beenden: `./stop.sh` |
+| Nach `fuser -k` erscheint sofort eine neue PID | Ein Neustarter ist aktiv – siehe Abschnitt 8.5 |
 | `Sprache: NICHT bereit` | Schritt 4: Sprachmodell installieren, dann „Erneut prüfen“ |
 | „Es liegt kein Sprachmodell vor“ | Beide Dateien (`.onnx` **und** `.onnx.json`) im selben Ordner nötig |
 | `python3-venv` fehlt | `sudo apt install python3-venv python3-pip` |
@@ -300,7 +393,50 @@ data/modelle/      Piper-Stimmen (+ optional XTTS)
 | Kein Mikrofonzugriff | Browser fragt einmalig – Erlaubnis für `127.0.0.1` geben |
 | Seite lädt nicht | Terminal offen lassen; Adresse **mit http**, nicht https |
 | Sprache klingt nicht deutsch | deutsches Modell `de_DE-…` wählen |
+| `coqui-tts` installiert, XTTS trotzdem „nicht verfügbar“ | PyTorch fehlt – `pip install "coqui-tts[cpu]"` (PyTorch ist bei coqui-tts ein Extra, kein Grundpaket) |
+| XTTS meldet „Modell unvollständig“ | Es fehlen Modelldateien – `python -m app.voice_setup --xtts` ergänzt sie (Prüfsummen werden geprüft) |
+| XTTS bricht beim Laden ab | Zu wenig Arbeitsspeicher (8 GiB ist knapp): alle anderen Programme schließen, kurze Sätze verwenden |
 | Sprachausgabe sehr langsam | kürzere Absätze, „Langsamer CPU-Modus“ **aus**, andere Programme schließen |
+
+### 8.5 Nach jedem `fuser -k` kommt eine neue Prozessnummer
+
+Das bedeutet: Nicht du startest die App neu, sondern ein anderer Prozess
+(start.sh in einer Schleife, ein Autostart-Eintrag, ein systemd-Dienst oder ein
+Skript). Erst herausfinden, **wer** neu startet:
+
+```bash
+# 1) alle Instanzen beenden
+./stop.sh        # oder: pkill -f app.server
+
+# 2) sofort prüfen, ob wieder etwas lauscht (nach ~2 s)
+ss -ltnp 'sport = :8765'
+#    → erscheint eine PID, ist ein Neustarter aktiv
+
+# 3) Elternprozess dieser PID ansehen
+ps -o pid,ppid,lstart,cmd -p <PID>
+ps -o pid,cmd -p <PPID>
+```
+
+Häufige Ursachen und ihre Prüfung:
+
+```bash
+# a) systemd-Dienst (Benutzer)
+systemctl --user list-units --type=service | grep -i stimm
+systemctl --user stop stimmenclonewandler.service      # falls vorhanden
+
+# b) Autostart-Eintrag im Desktop
+grep -r "app.server\|start.sh" ~/.config/autostart ~/.config/systemd/user 2>/dev/null
+
+# c) Startschleife in einem anderen Terminal
+ps -ef | grep -E "start\.sh|app\.server" | grep -v grep
+```
+
+Läuft die App in einem Terminal, das du nicht mehr siehst: dieses Fenster
+schließen oder `pkill -f app.server` verwenden. Danach `./stop.sh` zur Kontrolle.
+
+Da die App seit Version 1.0 einen belegten Port automatisch überspringt
+(8766, 8767 …), ist ein Beenden übrigens **nicht mehr nötig** – du kannst
+einfach die Adresse aus der Konsole im Browser öffnen.
 
 ### Fallback ohne Administratorrechte (`uv`)
 
@@ -319,20 +455,63 @@ uv pip install --python .venv/bin/python -r requirements.txt
 
 ## 9. Optional: echte Stimmkopie (XTTS-v2)
 
-Nur wenn du es wirklich willst – auf diesem Laptop ist es langsam.
+Nur wenn du es wirklich willst – auf diesem Laptop ist es langsam. Piper bleibt
+die schnelle Standardlösung; XTTS-v2 ist die einzige Möglichkeit, deine
+Stimm**farbe** nachzubilden.
+
+### 9.1 Welches Modell ist das?
+
+Es gibt genau **ein** XTTS-v2-Checkpoint für `coqui-tts`:
+`tts_models/multilingual/multi-dataset/xtts_v2` (17 Sprachen, Deutsch enthalten,
+Sprachkürzel `de`). Es liegt als Dateisatz in der Modellablage
+`tts-hub/XTTS-v2` (Hugging-Face-Spiegel der Coqui-Ablage):
+
+| Datei | Größe | Zweck |
+| --- | --- | --- |
+| `model.pth` | 1,74 GiB | das eigentliche Modell |
+| `speakers_xtts.pth` | 7,4 MB | Sprecher-Statistiken |
+| `vocab.json` | 353 KB | Tokenizer |
+| `config.json` | 4 KB | Architektur |
+| `mel_stats.pth` | 1 KB | Lautstärke-Normalisierung |
+
+Zusammen **~1,9 GB**. Lizenz: **Coqui Public Model License (CPML)** –
+nicht-kommerzielle Nutzung, siehe <https://coqui.ai/cpml>.
+
+### 9.2 PyTorch installieren (wichtig!)
+
+`pip install coqui-tts` allein installiert **kein** PyTorch – PyTorch ist bei
+`coqui-tts` ein Extra. Ohne PyTorch meldet die App ehrlich „nicht verfügbar“.
 
 ```bash
-.venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
-.venv/bin/pip install coqui-tts
+.venv/bin/python -m pip install "coqui-tts[cpu]"
 ```
 
-Danach ein XTTS-v2-Modell (`model.pth`, `config.json`, `vocab.json`) nach
-`data/modelle/xtts/` legen, in der App als Verfahren
-„Eigene Stimmkopie (XTTS-v2)“ wählen und eine Master-Aufnahme (12–30 s) festlegen.
+Das zieht `torch` und `torchaudio` in der CPU-Variante mit (~300–500 MB
+Download). Getestet: `coqui-tts 0.28.0`, `torch 2.15.0`, Python 3.14.4 – für
+Python 3.14 gibt es fertige torch-Wheels, es muss also nichts am System
+geändert werden.
 
-**Ehrliche Erwartung:** ~4–5 GB Arbeitsspeicher (bei 8 GiB alles andere schließen)
-und **10–30× langsamer als Echtzeit** – ein 10-Sekunden-Satz braucht 2–5 Minuten.
-Fehlt etwas, meldet die App das und speichert **nichts**.
+### 9.3 Modell laden (nur auf deinen ausdrücklichen Aufruf)
+
+```bash
+.venv/bin/python -m app.voice_setup --xtts
+```
+
+Der Helfer zeigt Lizenz und Größe, fragt einmal nach, lädt nach
+`data/modelle/xtts/`, prüft die SHA-256-Prüfsummen und kann abgebrochene
+Downloads fortsetzen (bereits vorhandene Dateien werden wiederverwendet).
+`--yes` überspringt die Rückfrage, `--force` lädt alles neu. Die Web-App selbst
+lädt **nie** etwas nach.
+
+### 9.4 Nutzen
+
+In der App eine **Master-Aufnahme** (12–30 s, nur deine Stimme) festlegen,
+dann Sprachausgabe → Verfahren „Eigene Stimmkopie (XTTS-v2)“.
+
+**Ehrliche Erwartung:** ~4 GB Arbeitsspeicher beim Laden (bei 8 GiB alles andere
+schließen, sonst bricht es ab) und **10–30× langsamer als Echtzeit** – ein
+10-Sekunden-Satz braucht 2–5 Minuten. Fehlt etwas, meldet die App das und
+speichert **nichts**.
 
 ---
 

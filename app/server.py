@@ -7,12 +7,14 @@ keine API und keinen Schlüssel.
 
 from __future__ import annotations
 
+import json as jsonlib
+import os
 import socket
 import time
 import traceback
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 from flask import (
     Flask,
@@ -97,16 +99,89 @@ def cleanup_temp(max_age_hours: float = 24.0) -> int:
     return removed
 
 
-def port_is_free(host: str, port: int) -> bool:
-    """Prüft, ob ein Port belegt ist (ohne ihn dauerhaft zu belegen)."""
-    probe_host = "0.0.0.0" if host in ("", "localhost") else host
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        probe.settimeout(0.4)
+def _listening_ports() -> Optional[Set[int]]:
+    """Liest die tatsächlich lauschenden TCP-Ports aus dem Kernel (Linux).
+
+    Das ist verlässlicher als ein bind-Test: Nach einem Neustart liegen alte
+    Verbindungen noch im TIME_WAIT-Zustand, ein bind schlägt dann scheinbar
+    fehl, obwohl kein Server mehr lauscht.
+    """
+    ports = set()
+    found = False
+    for path in ("/proc/net/tcp", "/proc/net/tcp6"):
         try:
-            probe.bind((probe_host, port))
+            with open(path, "r", encoding="ascii", errors="ignore") as handle:
+                next(handle, None)
+                for line in handle:
+                    parts = line.split()
+                    if len(parts) < 4 or parts[3] != "0A":  # 0A = LISTEN
+                        continue
+                    try:
+                        ports.add(int(parts[1].split(":")[1], 16))
+                    except (IndexError, ValueError):
+                        continue
+            found = True
         except OSError:
+            continue
+    return ports if found else None
+
+
+def port_is_free(host: str, port: int) -> bool:
+    """Prüft, ob der Port wirklich frei ist (kein lauschender Server)."""
+    listening = _listening_ports()
+    if listening is not None:
+        return port not in listening
+
+    # Fallback für Systeme ohne /proc: kurzer Verbindungsversuch
+    probe_host = "127.0.0.1" if host in ("0.0.0.0", "", "localhost") else host
+    try:
+        with socket.create_connection((probe_host, port), timeout=0.3):
             return False
-    return True
+    except ConnectionRefusedError:
+        return True
+    except OSError:
+        return True
+
+
+def running_instance(host: str, port: int, timeout: float = 0.7) -> Optional[str]:
+    """Prüft, ob auf diesem Port bereits *diese* App läuft.
+
+    Rückgabe: Versionsnummer, wenn dort unsere App antwortet, sonst None.
+    So startet kein zweites Fenster eine weitere Instanz und die Meldungen
+    „Port belegt“ entstehen erst gar nicht.
+    """
+    probe_host = "127.0.0.1" if host in ("0.0.0.0", "", "localhost") else host
+    try:
+        with socket.create_connection((probe_host, port), timeout=timeout) as sock:
+            sock.settimeout(timeout)
+            request_line = (
+                "GET /api/health HTTP/1.1\r\n"
+                f"Host: {probe_host}:{port}\r\n"
+                "Connection: close\r\n\r\n"
+            )
+            sock.sendall(request_line.encode("ascii"))
+            chunks = []
+            while True:
+                part = sock.recv(2048)
+                if not part:
+                    break
+                chunks.append(part)
+                if sum(len(chunk) for chunk in chunks) > 8192:
+                    break
+    except OSError:
+        return None
+
+    raw = b"".join(chunks)
+    if b" 200 " not in raw.split(b"\r\n", 1)[0]:
+        return None
+    body = raw.split(b"\r\n\r\n", 1)[-1]
+    try:
+        payload = jsonlib.loads(body.decode("utf-8", "replace"))
+    except (jsonlib.JSONDecodeError, UnicodeDecodeError):
+        return None
+    if not isinstance(payload, dict) or not payload.get("ok"):
+        return None
+    return str(payload.get("version") or APP_VERSION)
 
 
 def find_free_port(host: str, preferred: int, attempts: int = 12) -> tuple:
@@ -133,6 +208,16 @@ def _status(for_ui: bool = True) -> Dict[str, Any]:
     if for_ui and STATUS_CACHE["value"] and (now - STATUS_CACHE["time"]) < STATUS_TTL_SECONDS:
         return STATUS_CACHE["value"]
     payload = hardware.status()
+    # Die Oberfläche braucht nicht nur "liegt die Datei da?", sondern auch
+    # "kann die App das überhaupt ausführen?" – also PyTorch, Coqui TTS und
+    # den vollständigen Modelldateisatz. hardware.status() liefert nur Ersteres.
+    xtts_requirements = tts.xtts_requirements()
+    payload["xtts"] = {
+        **xtts_requirements,
+        "present": bool(xtts_requirements["model"].get("present")),
+        "size_mb": xtts_requirements["model"].get("size_mb", 0),
+        "missing_files": list(xtts_requirements["model"].get("missing") or []),
+    }
     payload.update({
         "app": {"name": APP_NAME, "version": APP_VERSION},
         "privacy_notice": PRIVACY_NOTICE,
@@ -195,7 +280,14 @@ def api_system():
 
 @app.get("/api/health")
 def api_health():
-    return jsonify({"ok": True, "time": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    """Kennung der laufenden Instanz (wird auch zur Doppelstart-Erkennung genutzt)."""
+    return jsonify({
+        "ok": True,
+        "app": APP_NAME,
+        "version": APP_VERSION,
+        "pid": os.getpid(),
+        "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
 
 
 @app.post("/api/status/refresh")
@@ -517,6 +609,44 @@ def api_job_audio(job_id: str):
     return send_file(str(path), mimetype="audio/wav", conditional=True, max_age=0)
 
 
+AUDITION_TEXT = (
+    "Setz dich einen Moment hin und atme ruhig. Manche Dinge brauchen Zeit, "
+    "und das ist in Ordnung."
+)
+
+
+@app.post("/api/audition")
+def api_audition():
+    """Kurze Hörprobe einer Stimme/eines Sprechers mit den aktuellen Einstellungen."""
+    if not hardware.piper_status()["available"]:
+        return _json_error("Die lokale Sprach-Engine (Piper) ist nicht installiert.", 409)
+    if not any(v.get("usable") for v in hardware.find_piper_voices()):
+        return _json_error("Es liegt kein Sprachmodell für die Hörprobe vor.", 409)
+
+    payload = request.get_json(silent=True) or {}
+    text = str(payload.get("text") or AUDITION_TEXT)[:400]
+    options = tts.SynthesisOptions.from_payload({
+        **payload,
+        "adapt_pitch": False,   # Hörprobe bleibt bei der reinen Modellstimme
+    })
+    job = jobs.create("audition")
+
+    def runner(started):
+        meta = tts.synthesize_to_wav(
+            text,
+            _temp_path(started.id),
+            options,
+            progress=lambda percent, stage: started.update(percent, f"Hörprobe: {stage}"),
+        )
+        meta["preview_url"] = f"/api/jobs/{started.id}/audio"
+        meta["text"] = text
+        meta["speaker_id"] = options.speaker_id
+        return meta
+
+    jobs.start(job, runner)
+    return jsonify({"ok": True, "job": job.snapshot(), "text": text})
+
+
 @app.post("/api/benchmark")
 def api_benchmark():
     """Kurzer Test: wie schnell rechnet dieser Laptop die Sprachausgabe?"""
@@ -684,7 +814,7 @@ def _banner(status: Dict[str, Any], port: Optional[int] = None, moved: bool = Fa
         print(f"      Belegten Port finden:  ss -ltnp 'sport = :{PORT}'")
         print(f"      Prozess beenden:       fuser -k {PORT}/tcp")
         print(line)
-    print("  Beenden mit Strg+C")
+    print("  Beenden mit Strg+C   ·   alle Instanzen beenden: ./stop.sh")
     print()
 
 
@@ -701,6 +831,25 @@ def main() -> None:
     removed = cleanup_temp()
     if removed:
         print(f"[i] {removed} alte Vorschaudateien entfernt.")
+
+    # Läuft schon eine Instanz auf dem Wunschport? Dann keine zweite starten.
+    existing = running_instance(HOST, PORT)
+    if existing:
+        try:
+            PORT_FILE.write_text(str(PORT), encoding="utf-8")
+        except OSError:
+            pass
+        line = "=" * 68
+        print(line)
+        print(f"  {APP_NAME} läuft bereits auf http://{HOST}:{PORT}")
+        print(line)
+        print("  Es wird keine zweite Instanz gestartet.")
+        print(f"  Im Browser öffnen:  http://{HOST}:{PORT}")
+        print()
+        print("  Beenden mit:        ./stop.sh        (Windows: stop_windows.bat)")
+        print("  oder:               pkill -f app.server")
+        print(line)
+        raise SystemExit(0)
 
     try:
         port, moved = find_free_port(HOST, PORT)

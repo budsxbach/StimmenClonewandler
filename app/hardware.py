@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from . import voice_licenses
 from .config import (
     DATA_DIR,
     PIPER_DIR,
@@ -245,8 +246,12 @@ def _voice_meta(model_path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
     name = model_path.stem
     parts = name.split("-")
     quality = parts[-1] if len(parts) >= 3 else "unbekannt"
+    license_info = voice_licenses.voice_license(name) or {}
     return {
         "name": name,
+        "license": license_info.get("license"),
+        "commercial_use": license_info.get("commercial"),
+        "attribution": license_info.get("attribution"),
         "filename": model_path.name,
         "path": str(model_path),
         "language": language,
@@ -298,18 +303,36 @@ def find_piper_voices() -> List[Dict[str, Any]]:
     return voices
 
 
+# Ein lauffähiges XTTS-v2-Modell besteht aus allen fünf Dateien. Fehlt eine,
+# bricht das Laden später mit einer schwer verständlichen Fehlermeldung ab –
+# deshalb gilt das Modell erst dann als vorhanden, wenn alles da ist.
+XTTS_REQUIRED_FILES = ("model.pth", "config.json", "vocab.json", "speakers_xtts.pth", "mel_stats.pth")
+
+
 def find_xtts() -> Dict[str, Any]:
-    """Prüft, ob ein XTTS-v2-Modell lokal liegt (für das Klonen der eigenen Stimme)."""
+    """Prüft, ob das XTTS-v2-Modell vollständig lokal liegt (eigene Stimmkopie)."""
     if not XTTS_DIR.exists():
-        return {"present": False, "size_mb": 0}
+        return {
+            "present": False,
+            "size_mb": 0,
+            "missing": list(XTTS_REQUIRED_FILES),
+            "found_files": [],
+            "any_files": False,
+            "path": str(XTTS_DIR),
+        }
     files = [p for p in XTTS_DIR.glob("**/*") if p.is_file()]
     total = sum(p.stat().st_size for p in files)
-    markers = ("config.json", "model.pth", "vocab.json")
-    found = {marker for marker in markers for p in files if p.name == marker}
+    names = {p.name for p in files}
+    found = sorted(names & set(XTTS_REQUIRED_FILES))
+    missing = [name for name in XTTS_REQUIRED_FILES if name not in names]
     return {
-        "present": len(found) >= 2,
+        "present": not missing,
         "size_mb": round(total / (1024 * 1024), 1),
-        "found_files": sorted(found),
+        "missing": missing,
+        "found_files": found,
+        # Nur relevante Modelldateien zählen – ein leeres Verzeichnis (oder nur
+        # eine .gitkeep-Datei) ist kein "unvollständiges Modell".
+        "any_files": bool(found),
         "path": str(XTTS_DIR),
     }
 
@@ -357,7 +380,19 @@ def status() -> Dict[str, Any]:
     if xtts.get("present") and not torch.get("available"):
         messages.append({
             "severity": "warn",
-            "text": "Ein XTTS-Modell wurde gefunden, aber PyTorch fehlt – die eigene Stimmkopie ist damit nicht nutzbar.",
+            "text": (
+                "Das XTTS-v2-Modell ist vorhanden, aber PyTorch fehlt – die eigene "
+                'Stimmkopie ist damit nicht nutzbar. Installieren mit: pip install "coqui-tts[cpu]"'
+            ),
+        })
+    elif not xtts.get("present") and xtts.get("any_files"):
+        messages.append({
+            "severity": "warn",
+            "text": (
+                "Das XTTS-v2-Modell in data/modelle/xtts ist unvollständig – es fehlt: "
+                + ", ".join(xtts.get("missing") or [])
+                + ". Vervollständigen mit: python -m app.voice_setup --xtts"
+            ),
         })
 
     if not ready:

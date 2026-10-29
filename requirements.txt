@@ -12,6 +12,12 @@ piper-tts>=1.2,<2.0      # lokale Sprachsynthese auf der CPU (bringt numpy + onn
 # unbrauchbar – deshalb standardmäßig NICHT installiert. Nur eintragen, wenn du
 # es wirklich willst (die App meldet sonst ehrlich, dass es nicht verfügbar ist):
 #
-# torch>=2.2 --index-url https://download.pytorch.org/whl/cpu
-# coqui-tts>=0.24
+# Achtung: "pip install coqui-tts" bringt KEIN PyTorch mit – PyTorch ist dort
+# ein Extra. Richtig ist deshalb:
+#
+#   pip install "coqui-tts[cpu]"      # torch + torchaudio in der CPU-Variante
+#
+# Danach das Modell holen (nur auf ausdrücklichen Aufruf, ~1,9 GB):
+#
+#   python -m app.voice_setup --xtts
 # ---------------------------------------------------------------------------

@@ -126,6 +126,15 @@ python3 -m venv .venv
 .venv/bin/python -m app.server
 ```
 
+Beenden: `Strg+C` im Terminal – oder alle Instanzen auf einmal:
+
+```bash
+./stop.sh
+```
+
+Eine bereits laufende Instanz wird erkannt: ein zweiter Start meldet
+„läuft bereits“ und startet nichts doppelt.
+
 Sprachmodell (einmalig, mit Internet):
 
 ```bash
@@ -180,12 +189,86 @@ etwas aus dem Internet.
 3. In der App auf **System & Modell → Erneut prüfen** klicken.
    Unter „Sprachmodelle“ erscheint die Stimme als *Deutsch*.
 
-**Empfehlung für die gewünschte Stimme:** eine **männliche deutsche
-Piper-Stimme in mittlerer Qualität** (`-medium`, ca. 60 MB) – z. B.
-`de_DE-thorsten-medium`. Sie klingt natürlich, läuft auf zwei Kernen und
-lässt sich mit den Stil-Vorlagen gut in Richtung „warm, ruhig, leicht tief“
-formen. Probiere die Stile in der App durch; die Klangfarbe selbst stammt
-immer vom Modell.
+### Welche deutsche Stimme passt?
+
+Alle offiziell verfügbaren deutschen Piper-Stimmen:
+
+| Stimme | Qualität | Geschlecht | Lizenz der Daten | Eignung für „alt, weise, warm“ |
+| --- | --- | --- | --- | --- |
+| `de_DE-mls-medium` | medium (22 kHz, 236 Sprecher!) | gemischt | CC BY 4.0 | **beste Wahl** – viele männliche Sprecher, darunter tiefe, ruhige |
+| `de_DE-thorsten_emotional-medium` | medium | männlich | CC0 | sehr gut – gleiche Stimme wie Thorsten, mit Emotions-Kennungen (u. a. ruhig/traurig) |
+| `de_DE-thorsten-high` | high (22 kHz, ~114 MB) | männlich | CC0 | gute Klangtreue, neutral-freundlich, klingt eher jünger |
+| `de_DE-thorsten-medium` | medium (~63 MB) | männlich | CC0 | Standard, sachlich-neutral |
+| `de_DE-pavoque-low` | low (16 kHz) | männlich | **CC BY-NC-SA** (nur nicht-kommerziell) | möglich, aber rau und lizenzbeschränkt |
+| `de_DE-karlsson-low` | low | männlich | M-AILABS | rau, eher jung |
+| `de_DE-ramona-low`, `de_DE-kerstin-low`, `de_DE-eva_k-x_low` | low | weiblich | verschiedene | – |
+
+**Vorgehen für eine alte, weise Männerstimme**
+
+1. `de_DE-mls-medium` installieren (236 Sprecher in einem Modell):
+   ```bash
+   .venv/bin/python -m app.voice_setup de_DE-mls-medium
+   ```
+2. In der App unter **Sprachausgabe → Sprecher im Modell** durchschalten
+   und mit **„Nächster Sprecher“** jeweils eine Hörprobe erzeugen – so findest
+   du in wenigen Minuten den tiefsten, ruhigsten Sprecher.
+3. Stil **„Alt & weise (tief, bedächtig)“** wählen: senkt die Tonhöhe um
+   1,5 Halbtöne (ohne Tempoänderung), hebt die Tiefen an, zähmt die Höhen,
+   spricht langsamer und setzt eine sehr leichte Rauheit.
+4. Mit **Tonhöhe feinjustieren** und **Sprechtempo** nach Geschmack nachziehen.
+
+> Ehrlich: Kein Piper-Modell ist mit „alter weiser Erzähler“ trainiert. Die
+> Kombination aus Sprecherwahl + „Alt & weise“ + Tonhöhenabsenkung kommt dem
+> am nächsten, bleibt aber eine Annäherung. Für eine wirklich eigene
+> Klangfarbe bleibt nur XTTS-v2 mit deiner Referenzaufnahme (langsam auf CPU).
+
+### Nutzungsrechte: welche Stimme darf in ein YouTube-Video?
+
+Sobald du mit dem Video **Geld verdienst** (Werbung, Sponsoring, Produktlinks,
+Bezahlmitgliedschaften, Firmenkanal), gilt das als **kommerzielle Nutzung**.
+Dann entscheidet die Lizenz der Trainingsdaten der Stimme – nicht die Lizenz
+von Piper selbst (Piper ist MIT und erlaubt alles):
+
+| Stimme | Lizenz der Trainingsdaten | Kommerziell? | Auflage |
+| --- | --- | --- | --- |
+| `de_DE-thorsten-high` / `-medium` | CC0 1.0 | **ja** | keine |
+| `de_DE-thorsten_emotional-medium` | CC0 1.0 | **ja** | keine |
+| `de_DE-kerstin-low` | CC0 1.0 | **ja** | keine |
+| `de_DE-mls-medium` | CC BY 4.0 | **ja** | Namensnennung (MLS-Datensatz + Piper) |
+| `de_DE-eva_k-x_low`, `-karlsson-low`, `-ramona-low` | M-AILABS (BSD-artig) | **ja** | Copyright-Hinweis beibehalten |
+| `de_DE-pavoque-low` | CC BY-NC-SA 4.0 | **nein** | nur privat / Hobby ohne Geld |
+| XTTS-v2 (eigene Stimmkopie) | Coqui Public Model License 1.0.0 | **nein** | „only non-commercial use of a model **and its outputs**“ |
+
+**Empfehlung für deinen Kanal**
+
+- `de_DE-thorsten-high` – klare, männliche Stimme, **CC0**, keinerlei Auflagen.
+- `de_DE-mls-medium` – wenn es tief und alt klingen soll (236 Sprecher);
+  dann Namensnennung in die Videobeschreibung.
+- `de_DE-thorsten_emotional-medium` – wenn du Betonung brauchst (Emotions-Kennungen).
+
+Textbaustein für die Videobeschreibung (bei `mls`):
+
+> Sprachausgabe: Piper (MIT) – Stimme „mls-medium“ (CC BY 4.0),
+> trainiert mit dem MLS-Datensatz (CC BY 4.0, https://www.openslr.org/94/).
+
+**Pflichten rund ums Video**
+
+- Synthetische Sprache in YouTube Studio als **„verändert/synthetisch“**
+  kennzeichnen, wenn sie realistisch klingt – das ist YouTubes eigene Regel.
+- In der EU zusätzlich transparent machen, dass die Sprache **KI-erzeugt** ist
+  (EU AI Act, Art. 50).
+- Nur die **eigene Stimme** oder ausdrücklich erlaubte Aufnahmen klonen.
+  Fremde, prominent besetzte oder politische Stimmen: Finger weg.
+- Deine eigene Stimme darfst du kommerziell nutzen – aber eine mit **XTTS-v2**
+  erzeugte Ausgabe fällt unter die Modelllizenz und ist damit **nicht** für
+  monetarisierte Videos erlaubt. Nimm dafür Piper.
+
+Die App zeigt die Lizenz beim Auswählen der Stimme direkt an, und du kannst
+die Übersicht jederzeit offline abrufen:
+
+```bash
+.venv/bin/python -m app.voice_setup --licenses
+```
 
 **Wichtig zu den Modell-Dateien:**
 
@@ -198,18 +281,25 @@ immer vom Modell.
 
 ### Optionale eigene Stimmkopie (XTTS-v2)
 
-Nur wenn du das wirklich willst – auf einem älteren Laptop meist unbrauchbar:
+Nur wenn du das wirklich willst – auf einem älteren Laptop meist unbrauchbar.
+Dafür gibt es genau **ein** Modell: `tts_models/multilingual/multi-dataset/xtts_v2`
+(Dateisatz `tts-hub/XTTS-v2`, 17 Sprachen inkl. Deutsch, ~1,9 GB, Lizenz
+Coqui Public Model License – nicht-kommerziell).
+
+**Wichtig:** `pip install coqui-tts` bringt **kein** PyTorch mit (PyTorch ist
+dort ein Extra). Ohne PyTorch läuft XTTS nicht:
 
 ```bat
-.venv\Scripts\python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-.venv\Scripts\python -m pip install coqui-tts
+.venv\Scripts\python -m pip install "coqui-tts[cpu]"
+.venv\Scripts\python -m app.voice_setup --xtts
 ```
 
-Danach ein XTTS-v2-Modell (Modell, `config.json`, `vocab.json`) nach
-`data\modelle\xtts\` legen, in der App eine **Master-Aufnahme** festlegen
-(mindestens 6 s, besser 12–30 s ruhige Sprache) und als Verfahren
-„Eigene Stimmkopie (XTTS-v2)“ wählen. Fehlt etwas, meldet die App das
-ehrlich und erzeugt **keine** Datei.
+Der zweite Befehl zeigt Lizenz und Größe, fragt nach und lädt den kompletten
+Dateisatz nach `data\modelle\xtts\` (mit Prüfsummen, wiederaufsetzbar).
+Danach in der App eine **Master-Aufnahme** festlegen (mindestens 6 s, besser
+12–30 s ruhige Sprache) und als Verfahren „Eigene Stimmkopie (XTTS-v2)“
+wählen. Fehlt eine der fünf Modelldateien, meldet die App das ehrlich und
+erzeugt **keine** Datei.
 
 ---
 
@@ -222,7 +312,7 @@ das ehrlich bedeutet – es sind drei Bausteine, die unterschiedlich viel könne
 | --- | --- | --- |
 | **Stimmprofil** | misst mittlere Sprechlage (Grundfrequenz), Tonumfang und einen Helligkeitswert deiner Aufnahme | reine Schätzung, kein Modell |
 | **Tonhöhen-Anpassung** (aktiv) | verschiebt die Stimmlage der Modellstimme auf deine Lage, ohne die Sprechdauer zu verändern (WSOLA + Neubetastung, max. ±4 Halbtöne) | verändert **nicht** die Klangfarbe/Artikulation |
-| **XTTS-v2** (optional) | bildet deine Stimmfarbe aus der Referenz nach | ~2 GB Modell, PyTorch, auf CPU sehr langsam; nur wenn du es bewusst installierst |
+| **XTTS-v2** (optional) | bildet deine Stimmfarbe aus der Referenz nach | ~1,9 GB Modell + ~4 GB RAM, PyTorch, auf CPU sehr langsam; nur wenn du es bewusst installierst |
 
 ### So legst du deine Stimme fest
 
@@ -357,7 +447,7 @@ Gemeldete Ausstattung: Dell Latitude 5530 · Intel Core i5-1235U (12 Threads,
 
 **XTTS-v2 (echte Stimmkopie) auf diesem Laptop – ehrliche Einschätzung**
 
-- PyTorch (CPU) + Modell belegen ~4–5 GB Arbeitsspeicher. Bei 8 GiB gesamt
+- PyTorch (CPU) + Modell belegen ~4 GB Arbeitsspeicher. Bei 8 GiB gesamt
   funktioniert es nur, wenn fast alles andere geschlossen ist. Die App warnt
   dich, wenn weniger als 4,5 GB frei sind.
 - Rechenzeit: realistisch **10–30× langsamer als Echtzeit** – ein Satz von
@@ -443,6 +533,8 @@ StimmenClonewandler/
 ├── tests/                 Tests (WAV, Analyse, Ablage, API, Sprachkette)
 │   └── test_voice_factory.py  erzeugt eine *Teststimme* (Ton) für End-to-End-Tests
 ├── INSTALL.md             ausführliche Installations- und Bedienungsanleitung
+├── stop.sh                beendet alle laufenden Instanzen (Linux/macOS)
+├── stop_windows.bat       beendet alle laufenden Instanzen (Windows)
 ├── start_windows.bat      Startskript für Windows
 ├── start.sh               Startskript für Linux/macOS
 ├── requirements.txt
@@ -490,8 +582,9 @@ Editor-Dateien und alle Audio-/Modellformate aus.
   rechte verletzen und ist in der EU (u. a. AI Act, DSGVO) rechtlich riskant.
 - Kennzeichne erzeugte Sprachaufnahmen gegenüber Dritten als synthetisch.
 - Piper ist MIT-lizenziert; einzelne Stimmen haben eigene Lizenzen.
-  XTTS-v2 (Coqui) unterliegt der Coqui Public Model License
-  (nicht-kommerziell) – prüfe das vor einer Nutzung.
+  XTTS-v2 (Coqui) unterliegt der Coqui Public Model License (CPML,
+  nicht-kommerziell, <https://coqui.ai/cpml>) – für den privaten Gebrauch
+  gedacht; prüfe die Lizenz, bevor du etwas veröffentlichst.
 
 ---
 
@@ -500,7 +593,8 @@ Editor-Dateien und alle Audio-/Modellformate aus.
 | Problem | Lösung |
 | --- | --- |
 | „Python wurde nicht gefunden“ | Python neu installieren, „Add python.exe to PATH“ anhaken |
-| `Port 8765 is in use` | Die App wählt automatisch den nächsten freien Port (siehe Konsole). Alte Instanz beenden: `fuser -k 8765/tcp` |
+| `Port 8765 is in use` | Die App wählt automatisch den nächsten freien Port (siehe Konsole). Alte Instanz beenden: `./stop.sh` |
+| Nach `fuser -k` sofort neue PID | Ein Neustarter ist aktiv (Autostart/systemd/Schleife) – Diagnose in INSTALL.md, Abschnitt 8.5 |
 | `python3.12` wird nicht gefunden | Nicht nötig – Ubuntu 26.04 liefert 3.12 nicht aus, **3.14 funktioniert** |
 | `Sprache: NICHT bereit` beim Start | Normal, solange kein Modell vorliegt – Abschnitt 3 |
 | Installation schlägt fehl | einmalig Internet nötig, Firewall/Proxy prüfen, `python -m pip install -r requirements.txt` manuell ausführen |

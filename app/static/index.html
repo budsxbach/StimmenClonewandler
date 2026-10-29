@@ -166,6 +166,16 @@
             <select id="tts-voice"></select>
           </label>
           <p id="voice-hint" class="hint"></p>
+          <label class="field hidden" id="speaker-field">
+            <span>Sprecher im Modell</span>
+            <select id="tts-speaker"></select>
+          </label>
+          <div class="recorder-row">
+            <button id="btn-audition" class="btn btn-outline btn-small">Hörprobe dieser Stimme</button>
+            <button id="btn-next-speaker" class="btn btn-ghost btn-small hidden">Nächster Sprecher</button>
+            <span id="audition-status" class="hint"></span>
+          </div>
+          <audio id="audition-audio" class="hidden" controls preload="none"></audio>
           <label class="field">
             <span>Stimm-Stil</span>
             <select id="tts-preset"></select>
