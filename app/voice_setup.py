@@ -28,6 +28,13 @@ from urllib.request import Request, urlopen
 
 from . import hardware
 from .config import PIPER_DIR, XTTS_DIR, ensure_dirs
+from .voice_licenses import (  # noqa: F401  (VOICE_LICENSES bleibt importierbar)
+    ATTRIBUTION_TEMPLATE,
+    VOICE_LICENSES,
+    XTTS_COMMERCIAL_NOTE,
+    license_table,
+    voice_license,
+)
 
 TIMEOUT_SECONDS = 60
 USER_AGENT = "StimmenClonewandler/1.0 (lokale Stimmen-Installation)"
@@ -375,6 +382,28 @@ def _print_installed() -> None:
     print()
 
 
+def _print_licenses() -> None:
+    print("\nNutzungsrechte der deutschen Stimmen (Stand 2026-10)\n")
+    print("  Frage: darf die Sprachausgabe in Videos mit Geldverdienst verwendet werden?\n")
+    print(f"  {'Stimme':18} {'Lizenz':24} {'kommerziell':12} {'Namensnennung'}")
+    print("  " + "-" * 92)
+    for row in license_table():
+        allowed = "ja" if row["commercial"] else "NEIN"
+        print(f"  {row['voice']:18} {row['license']:24} {allowed:12} {row['attribution']}")
+    print("\n  Empfehlung für einen YouTube-Kanal:")
+    print("    de_DE-thorsten-high      männlich, klar, CC0 – keine Auflagen")
+    print("    de_DE-mls-medium         tiefe/ältere Männerstimmen, CC BY 4.0 – Namensnennung")
+    print("    de_DE-thorsten_emotional-medium  CC0, mit Emotions-Kennungen")
+    print("\n  Textbaustein für die Videobeschreibung (bei mls):")
+    print("    " + ATTRIBUTION_TEMPLATE.format(
+        voice="mls-medium", license="CC BY 4.0"))
+    print("\n  Nicht verwenden für monetarisierte Videos: pavoque (CC BY-NC-SA).")
+    print("\n  " + XTTS_COMMERCIAL_NOTE)
+    print("\n  Deine eigene Stimme darfst du kommerziell nutzen – aber eine mit")
+    print("  XTTS-v2 erzeugte Ausgabe fällt unter die Modelllizenz (nicht-kommerziell).")
+    print("  Für werbliche Videos gilt außerdem: synthetische Sprache gegenüber")
+    print("  YouTube als „verändert/synthetisch“ kennzeichnen und im Europäischen")
+    print("  Raum als KI-erzeugt transparent machen (EU AI Act, Art. 50).\n")
 def _print_xtts_state() -> None:
     status = xtts_status()
     if status["present"]:
@@ -451,6 +480,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Optionales XTTS-v2-Modell (~1,9 GB) nach data/modelle/xtts laden",
     )
     parser.add_argument(
+        "--licenses",
+        action="store_true",
+        help="Nutzungsrechte der deutschen Stimmen anzeigen (für Videos/YouTube)",
+    )
+    parser.add_argument(
         "--yes",
         action="store_true",
         help="Lizenz bestätigen und ohne Rückfrage herunterladen (für --xtts)",
@@ -460,6 +494,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.installed:
         _print_installed()
         _print_xtts_state()
+        return 0
+
+    if args.licenses:
+        _print_licenses()
         return 0
 
     if args.xtts:

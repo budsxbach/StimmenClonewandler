@@ -258,10 +258,19 @@ function renderVoiceSelect() {
   if (exists) select.value = current;
   const selected = voices.find((voice) => voice.name === select.value) || voices[0];
   renderSpeakerSelect(selected);
-  $("#voice-hint").textContent = selected
-    ? `Lokales Modell · ${selected.dataset || "unbekannter Datensatz"} · ${selected.sample_rate || "?"} Hz`
-      + (selected.is_german ? "" : " · Achtung: kein deutsches Modell, Aussprache kann fehlerhaft sein.")
-    : "";
+  const parts = selected
+    ? [`Lokales Modell · ${selected.dataset || "unbekannter Datensatz"} · ${selected.sample_rate || "?"} Hz`]
+    : [];
+  if (selected && selected.is_german === false) {
+    parts.push("Achtung: kein deutsches Modell, Aussprache kann fehlerhaft sein.");
+  }
+  if (selected && selected.license) {
+    parts.push(selected.commercial_use
+      ? `Lizenz ${selected.license} – für Videos mit Geldverdienst erlaubt`
+        + (selected.attribution ? ` (${selected.attribution}).` : ".")
+      : `Lizenz ${selected.license} – NICHT für Videos mit Geldverdienst erlaubt.`);
+  }
+  $("#voice-hint").textContent = parts.join(" · ");
 }
 
 function renderSpeakerSelect(voice) {

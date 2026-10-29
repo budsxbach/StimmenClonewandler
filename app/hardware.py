@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from . import voice_licenses
 from .config import (
     DATA_DIR,
     PIPER_DIR,
@@ -245,8 +246,12 @@ def _voice_meta(model_path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
     name = model_path.stem
     parts = name.split("-")
     quality = parts[-1] if len(parts) >= 3 else "unbekannt"
+    license_info = voice_licenses.voice_license(name) or {}
     return {
         "name": name,
+        "license": license_info.get("license"),
+        "commercial_use": license_info.get("commercial"),
+        "attribution": license_info.get("attribution"),
         "filename": model_path.name,
         "path": str(model_path),
         "language": language,

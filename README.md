@@ -222,6 +222,54 @@ Alle offiziell verfügbaren deutschen Piper-Stimmen:
 > am nächsten, bleibt aber eine Annäherung. Für eine wirklich eigene
 > Klangfarbe bleibt nur XTTS-v2 mit deiner Referenzaufnahme (langsam auf CPU).
 
+### Nutzungsrechte: welche Stimme darf in ein YouTube-Video?
+
+Sobald du mit dem Video **Geld verdienst** (Werbung, Sponsoring, Produktlinks,
+Bezahlmitgliedschaften, Firmenkanal), gilt das als **kommerzielle Nutzung**.
+Dann entscheidet die Lizenz der Trainingsdaten der Stimme – nicht die Lizenz
+von Piper selbst (Piper ist MIT und erlaubt alles):
+
+| Stimme | Lizenz der Trainingsdaten | Kommerziell? | Auflage |
+| --- | --- | --- | --- |
+| `de_DE-thorsten-high` / `-medium` | CC0 1.0 | **ja** | keine |
+| `de_DE-thorsten_emotional-medium` | CC0 1.0 | **ja** | keine |
+| `de_DE-kerstin-low` | CC0 1.0 | **ja** | keine |
+| `de_DE-mls-medium` | CC BY 4.0 | **ja** | Namensnennung (MLS-Datensatz + Piper) |
+| `de_DE-eva_k-x_low`, `-karlsson-low`, `-ramona-low` | M-AILABS (BSD-artig) | **ja** | Copyright-Hinweis beibehalten |
+| `de_DE-pavoque-low` | CC BY-NC-SA 4.0 | **nein** | nur privat / Hobby ohne Geld |
+| XTTS-v2 (eigene Stimmkopie) | Coqui Public Model License 1.0.0 | **nein** | „only non-commercial use of a model **and its outputs**“ |
+
+**Empfehlung für deinen Kanal**
+
+- `de_DE-thorsten-high` – klare, männliche Stimme, **CC0**, keinerlei Auflagen.
+- `de_DE-mls-medium` – wenn es tief und alt klingen soll (236 Sprecher);
+  dann Namensnennung in die Videobeschreibung.
+- `de_DE-thorsten_emotional-medium` – wenn du Betonung brauchst (Emotions-Kennungen).
+
+Textbaustein für die Videobeschreibung (bei `mls`):
+
+> Sprachausgabe: Piper (MIT) – Stimme „mls-medium“ (CC BY 4.0),
+> trainiert mit dem MLS-Datensatz (CC BY 4.0, https://www.openslr.org/94/).
+
+**Pflichten rund ums Video**
+
+- Synthetische Sprache in YouTube Studio als **„verändert/synthetisch“**
+  kennzeichnen, wenn sie realistisch klingt – das ist YouTubes eigene Regel.
+- In der EU zusätzlich transparent machen, dass die Sprache **KI-erzeugt** ist
+  (EU AI Act, Art. 50).
+- Nur die **eigene Stimme** oder ausdrücklich erlaubte Aufnahmen klonen.
+  Fremde, prominent besetzte oder politische Stimmen: Finger weg.
+- Deine eigene Stimme darfst du kommerziell nutzen – aber eine mit **XTTS-v2**
+  erzeugte Ausgabe fällt unter die Modelllizenz und ist damit **nicht** für
+  monetarisierte Videos erlaubt. Nimm dafür Piper.
+
+Die App zeigt die Lizenz beim Auswählen der Stimme direkt an, und du kannst
+die Übersicht jederzeit offline abrufen:
+
+```bash
+.venv/bin/python -m app.voice_setup --licenses
+```
+
 **Wichtig zu den Modell-Dateien:**
 
 - Modelle sind **kein Quellcode** und gehören **nicht** zu GitHub.
