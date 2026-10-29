@@ -14,7 +14,7 @@ import time
 import traceback
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Set
 
 from flask import (
     Flask,
@@ -99,16 +99,48 @@ def cleanup_temp(max_age_hours: float = 24.0) -> int:
     return removed
 
 
-def port_is_free(host: str, port: int) -> bool:
-    """Prüft, ob ein Port belegt ist (ohne ihn dauerhaft zu belegen)."""
-    probe_host = "0.0.0.0" if host in ("", "localhost") else host
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        probe.settimeout(0.4)
+def _listening_ports() -> Optional[Set[int]]:
+    """Liest die tatsächlich lauschenden TCP-Ports aus dem Kernel (Linux).
+
+    Das ist verlässlicher als ein bind-Test: Nach einem Neustart liegen alte
+    Verbindungen noch im TIME_WAIT-Zustand, ein bind schlägt dann scheinbar
+    fehl, obwohl kein Server mehr lauscht.
+    """
+    ports = set()
+    found = False
+    for path in ("/proc/net/tcp", "/proc/net/tcp6"):
         try:
-            probe.bind((probe_host, port))
+            with open(path, "r", encoding="ascii", errors="ignore") as handle:
+                next(handle, None)
+                for line in handle:
+                    parts = line.split()
+                    if len(parts) < 4 or parts[3] != "0A":  # 0A = LISTEN
+                        continue
+                    try:
+                        ports.add(int(parts[1].split(":")[1], 16))
+                    except (IndexError, ValueError):
+                        continue
+            found = True
         except OSError:
+            continue
+    return ports if found else None
+
+
+def port_is_free(host: str, port: int) -> bool:
+    """Prüft, ob der Port wirklich frei ist (kein lauschender Server)."""
+    listening = _listening_ports()
+    if listening is not None:
+        return port not in listening
+
+    # Fallback für Systeme ohne /proc: kurzer Verbindungsversuch
+    probe_host = "127.0.0.1" if host in ("0.0.0.0", "", "localhost") else host
+    try:
+        with socket.create_connection((probe_host, port), timeout=0.3):
             return False
-    return True
+    except ConnectionRefusedError:
+        return True
+    except OSError:
+        return True
 
 
 def running_instance(host: str, port: int, timeout: float = 0.7) -> Optional[str]:

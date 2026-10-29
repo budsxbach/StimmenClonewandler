@@ -68,3 +68,23 @@ def test_no_free_port_raises():
         sock.close()
         for extra in others:
             extra.close()
+
+
+def test_port_is_free_again_right_after_shutdown():
+    """Nach dem Schließen eines Servers darf der Port sofort wieder frei sein.
+
+    Vor der Korrektur (SO_REUSEADDR) meldete die Prüfung hier fälschlich
+    „belegt“ – die App startete dann auf einem Ausweichport, obwohl 8765 frei war.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.listen(1)
+    # eine echte Verbindung aufbauen und wieder schließen -> TIME_WAIT
+    client = socket.create_connection(("127.0.0.1", port), timeout=1)
+    conn, _ = sock.accept()
+    conn.close()
+    client.close()
+    sock.close()
+
+    assert server.port_is_free("127.0.0.1", port) is True
