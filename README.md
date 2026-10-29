@@ -126,6 +126,15 @@ python3 -m venv .venv
 .venv/bin/python -m app.server
 ```
 
+Beenden: `Strg+C` im Terminal – oder alle Instanzen auf einmal:
+
+```bash
+./stop.sh
+```
+
+Eine bereits laufende Instanz wird erkannt: ein zweiter Start meldet
+„läuft bereits“ und startet nichts doppelt.
+
 Sprachmodell (einmalig, mit Internet):
 
 ```bash
@@ -443,6 +452,8 @@ StimmenClonewandler/
 ├── tests/                 Tests (WAV, Analyse, Ablage, API, Sprachkette)
 │   └── test_voice_factory.py  erzeugt eine *Teststimme* (Ton) für End-to-End-Tests
 ├── INSTALL.md             ausführliche Installations- und Bedienungsanleitung
+├── stop.sh                beendet alle laufenden Instanzen (Linux/macOS)
+├── stop_windows.bat       beendet alle laufenden Instanzen (Windows)
 ├── start_windows.bat      Startskript für Windows
 ├── start.sh               Startskript für Linux/macOS
 ├── requirements.txt
@@ -500,7 +511,8 @@ Editor-Dateien und alle Audio-/Modellformate aus.
 | Problem | Lösung |
 | --- | --- |
 | „Python wurde nicht gefunden“ | Python neu installieren, „Add python.exe to PATH“ anhaken |
-| `Port 8765 is in use` | Die App wählt automatisch den nächsten freien Port (siehe Konsole). Alte Instanz beenden: `fuser -k 8765/tcp` |
+| `Port 8765 is in use` | Die App wählt automatisch den nächsten freien Port (siehe Konsole). Alte Instanz beenden: `./stop.sh` |
+| Nach `fuser -k` sofort neue PID | Ein Neustarter ist aktiv (Autostart/systemd/Schleife) – Diagnose in INSTALL.md, Abschnitt 8.5 |
 | `python3.12` wird nicht gefunden | Nicht nötig – Ubuntu 26.04 liefert 3.12 nicht aus, **3.14 funktioniert** |
 | `Sprache: NICHT bereit` beim Start | Normal, solange kein Modell vorliegt – Abschnitt 3 |
 | Installation schlägt fehl | einmalig Internet nötig, Firewall/Proxy prüfen, `python -m pip install -r requirements.txt` manuell ausführen |

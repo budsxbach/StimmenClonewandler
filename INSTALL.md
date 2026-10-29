@@ -139,7 +139,23 @@ Prüfen, ob die Sprach-Engine wirklich installiert ist:
 Sprachmodell (Schritt 4). Alles andere (Aufnahmen, Analyse, Vergleich) funktioniert
 schon.
 
-### 3.5 Port belegt?
+### 3.5 App wieder beenden
+
+```bash
+./stop.sh          # beendet alle Instanzen (auch auf Ausweichports 8766+)
+```
+
+Im laufenden Terminal genügt `Strg+C`. Windows: `stop_windows.bat`.
+
+Startest du die App ein zweites Mal, während sie schon läuft, startet sie
+**keine** zweite Instanz, sondern meldet:
+
+```
+  StimmenClonewandler läuft bereits auf http://127.0.0.1:8765
+  Es wird keine zweite Instanz gestartet.
+```
+
+### 3.6 Port belegt?
 
 Startet die App mit `Port 8765 is in use`, wählt sie **automatisch den nächsten
 freien Port** (8766, 8767 …) und schreibt die richtige Adresse in die Konsole:
@@ -149,13 +165,23 @@ freien Port** (8766, 8767 …) und schreibt die richtige Adresse in die Konsole:
       anderen Fenster?). Darum läuft diese Instanz auf Port 8766.
 ```
 
-Meist läuft die App schon in einem anderen Terminalfenster. Dieses finden und
-beenden:
+Meist läuft die App schon in einem anderen Terminalfenster. Statt einzelne
+Prozesse zu jagen, alle Instanzen auf einmal beenden:
+
+```bash
+./stop.sh
+```
+
+Manuell:
 
 ```bash
 ss -ltnp 'sport = :8765'      # zeigt das Programm hinter dem Port
-fuser -k 8765/tcp             # beendet es (Alternative zu Strg+C)
+fuser -k 8765/tcp             # beendet genau diesen Prozess
+pkill -f app.server           # beendet alle Instanzen der App
 ```
+
+> **Wenn nach jedem `fuser -k` sofort eine neue Prozessnummer auftaucht**, wird
+> die App von etwas anderem neu gestartet. Siehe Abschnitt 8.5.
 
 Oder einen festen anderen Port verwenden:
 
@@ -291,7 +317,8 @@ data/modelle/      Piper-Stimmen (+ optional XTTS)
 
 | Meldung / Problem | Lösung |
 | --- | --- |
-| `Port 8765 is in use` | App wählt automatisch den nächsten Port (siehe Konsole). Alte Instanz beenden: `fuser -k 8765/tcp` |
+| `Port 8765 is in use` | App wählt automatisch den nächsten Port (siehe Konsole). Alte Instanz beenden: `./stop.sh` |
+| Nach `fuser -k` erscheint sofort eine neue PID | Ein Neustarter ist aktiv – siehe Abschnitt 8.5 |
 | `Sprache: NICHT bereit` | Schritt 4: Sprachmodell installieren, dann „Erneut prüfen“ |
 | „Es liegt kein Sprachmodell vor“ | Beide Dateien (`.onnx` **und** `.onnx.json`) im selben Ordner nötig |
 | `python3-venv` fehlt | `sudo apt install python3-venv python3-pip` |
@@ -301,6 +328,46 @@ data/modelle/      Piper-Stimmen (+ optional XTTS)
 | Seite lädt nicht | Terminal offen lassen; Adresse **mit http**, nicht https |
 | Sprache klingt nicht deutsch | deutsches Modell `de_DE-…` wählen |
 | Sprachausgabe sehr langsam | kürzere Absätze, „Langsamer CPU-Modus“ **aus**, andere Programme schließen |
+
+### 8.5 Nach jedem `fuser -k` kommt eine neue Prozessnummer
+
+Das bedeutet: Nicht du startest die App neu, sondern ein anderer Prozess
+(start.sh in einer Schleife, ein Autostart-Eintrag, ein systemd-Dienst oder ein
+Skript). Erst herausfinden, **wer** neu startet:
+
+```bash
+# 1) alle Instanzen beenden
+./stop.sh        # oder: pkill -f app.server
+
+# 2) sofort prüfen, ob wieder etwas lauscht (nach ~2 s)
+ss -ltnp 'sport = :8765'
+#    → erscheint eine PID, ist ein Neustarter aktiv
+
+# 3) Elternprozess dieser PID ansehen
+ps -o pid,ppid,lstart,cmd -p <PID>
+ps -o pid,cmd -p <PPID>
+```
+
+Häufige Ursachen und ihre Prüfung:
+
+```bash
+# a) systemd-Dienst (Benutzer)
+systemctl --user list-units --type=service | grep -i stimm
+systemctl --user stop stimmenclonewandler.service      # falls vorhanden
+
+# b) Autostart-Eintrag im Desktop
+grep -r "app.server\|start.sh" ~/.config/autostart ~/.config/systemd/user 2>/dev/null
+
+# c) Startschleife in einem anderen Terminal
+ps -ef | grep -E "start\.sh|app\.server" | grep -v grep
+```
+
+Läuft die App in einem Terminal, das du nicht mehr siehst: dieses Fenster
+schließen oder `pkill -f app.server` verwenden. Danach `./stop.sh` zur Kontrolle.
+
+Da die App seit Version 1.0 einen belegten Port automatisch überspringt
+(8766, 8767 …), ist ein Beenden übrigens **nicht mehr nötig** – du kannst
+einfach die Adresse aus der Konsole im Browser öffnen.
 
 ### Fallback ohne Administratorrechte (`uv`)
 

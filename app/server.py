@@ -7,6 +7,8 @@ keine API und keinen Schlüssel.
 
 from __future__ import annotations
 
+import json as jsonlib
+import os
 import socket
 import time
 import traceback
@@ -109,6 +111,47 @@ def port_is_free(host: str, port: int) -> bool:
     return True
 
 
+def running_instance(host: str, port: int, timeout: float = 0.7) -> Optional[str]:
+    """Prüft, ob auf diesem Port bereits *diese* App läuft.
+
+    Rückgabe: Versionsnummer, wenn dort unsere App antwortet, sonst None.
+    So startet kein zweites Fenster eine weitere Instanz und die Meldungen
+    „Port belegt“ entstehen erst gar nicht.
+    """
+    probe_host = "127.0.0.1" if host in ("0.0.0.0", "", "localhost") else host
+    try:
+        with socket.create_connection((probe_host, port), timeout=timeout) as sock:
+            sock.settimeout(timeout)
+            request_line = (
+                "GET /api/health HTTP/1.1\r\n"
+                f"Host: {probe_host}:{port}\r\n"
+                "Connection: close\r\n\r\n"
+            )
+            sock.sendall(request_line.encode("ascii"))
+            chunks = []
+            while True:
+                part = sock.recv(2048)
+                if not part:
+                    break
+                chunks.append(part)
+                if sum(len(chunk) for chunk in chunks) > 8192:
+                    break
+    except OSError:
+        return None
+
+    raw = b"".join(chunks)
+    if b" 200 " not in raw.split(b"\r\n", 1)[0]:
+        return None
+    body = raw.split(b"\r\n\r\n", 1)[-1]
+    try:
+        payload = jsonlib.loads(body.decode("utf-8", "replace"))
+    except (jsonlib.JSONDecodeError, UnicodeDecodeError):
+        return None
+    if not isinstance(payload, dict) or not payload.get("ok"):
+        return None
+    return str(payload.get("version") or APP_VERSION)
+
+
 def find_free_port(host: str, preferred: int, attempts: int = 12) -> tuple:
     """Sucht den ersten freien Port ab `preferred`.
 
@@ -195,7 +238,14 @@ def api_system():
 
 @app.get("/api/health")
 def api_health():
-    return jsonify({"ok": True, "time": time.strftime("%Y-%m-%dT%H:%M:%S")})
+    """Kennung der laufenden Instanz (wird auch zur Doppelstart-Erkennung genutzt)."""
+    return jsonify({
+        "ok": True,
+        "app": APP_NAME,
+        "version": APP_VERSION,
+        "pid": os.getpid(),
+        "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+    })
 
 
 @app.post("/api/status/refresh")
@@ -684,7 +734,7 @@ def _banner(status: Dict[str, Any], port: Optional[int] = None, moved: bool = Fa
         print(f"      Belegten Port finden:  ss -ltnp 'sport = :{PORT}'")
         print(f"      Prozess beenden:       fuser -k {PORT}/tcp")
         print(line)
-    print("  Beenden mit Strg+C")
+    print("  Beenden mit Strg+C   ·   alle Instanzen beenden: ./stop.sh")
     print()
 
 
@@ -701,6 +751,25 @@ def main() -> None:
     removed = cleanup_temp()
     if removed:
         print(f"[i] {removed} alte Vorschaudateien entfernt.")
+
+    # Läuft schon eine Instanz auf dem Wunschport? Dann keine zweite starten.
+    existing = running_instance(HOST, PORT)
+    if existing:
+        try:
+            PORT_FILE.write_text(str(PORT), encoding="utf-8")
+        except OSError:
+            pass
+        line = "=" * 68
+        print(line)
+        print(f"  {APP_NAME} läuft bereits auf http://{HOST}:{PORT}")
+        print(line)
+        print("  Es wird keine zweite Instanz gestartet.")
+        print(f"  Im Browser öffnen:  http://{HOST}:{PORT}")
+        print()
+        print("  Beenden mit:        ./stop.sh        (Windows: stop_windows.bat)")
+        print("  oder:               pkill -f app.server")
+        print(line)
+        raise SystemExit(0)
 
     try:
         port, moved = find_free_port(HOST, PORT)
